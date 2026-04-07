@@ -323,7 +323,7 @@ const TOOLS: ToolSeed[] = [
   },
 ];
 
-async function main() {
+export async function seedMain() {
   console.log('Seeding platforms...');
   for (const platform of PLATFORMS) {
     await prisma.platform.upsert({
@@ -449,11 +449,14 @@ async function main() {
   console.log(`Seeding complete. Created ${toolCount} tools, ${categoryCount} categories, ${platformCount} platforms.`);
 }
 
-main()
-  .catch((e) => {
-    console.error('Seed failed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Only auto-execute when run directly (not when imported for testing)
+if (require.main === module) {
+  seedMain()
+    .catch((e) => {
+      console.error('Seed failed:', e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
