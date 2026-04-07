@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ToolType {
+  MCP_SERVER
+  SKILL
+  RULE
+}
+
+enum ToolStatus {
+  PENDING
+  ACTIVE
+  FEATURED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Tool {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  description   String
+  descriptionZh String?
+  type          ToolType
+  status        ToolStatus @default(ACTIVE)
+
+  repoUrl       String
+  homepageUrl   String?
+  npmPackage    String?
+  pypiPackage   String?
+
+  stars         Int      @default(0)
+  forks         Int      @default(0)
+  openIssues    Int      @default(0)
+  language      String?
+  license       String?
+  lastCommitAt  DateTime?
+  author        String?
+  version       String?
+
+  tags          String[]
+  transports    String[]
+
+  isFeatured    Boolean  @default(false)
+  featuresZh    String[]
+  featuresEn    String[]
+  installGuide  Json?
+  screenshots   String[]
+
+  avgRating     Float    @default(0)
+  ratingCount   Int      @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  categories    ToolCategory[]
+  platforms     ToolPlatform[]
+  reviews       Review[]
+  submissions   Submission[]
+
+  @@index([type, status])
+  @@index([stars])
+  @@index([lastCommitAt])
+  @@index([isFeatured])
+  @@index([name])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  nameEn      String
+  nameZh      String
+  icon        String
+  descriptionEn String?
+  descriptionZh String?
+  order       Int      @default(0)
+  tools       ToolCategory[]
+
+  @@index([slug])
+}
+
+model Platform {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  icon        String
+  configKey   String
+  tools       ToolPlatform[]
+
+  @@index([slug])
+}
+
+model ToolCategory {
+  toolId     String
+  categoryId String
+  tool       Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([toolId, categoryId])
+}
+
+model ToolPlatform {
+  toolId     String
+  platformId String
+  tool       Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  platform   Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@id([toolId, platformId])
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  toolId      String
+  tool        Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  rating      Int
+  content     String?
+  platform    String?
+  useCase     String?
+  createdAt   DateTime @default(now())
+
+  @@index([toolId])
+}
+
+model Submission {
+  id              String           @id @default(cuid())
+  toolId          String?
+  tool            Tool?            @relation(fields: [toolId], references: [id])
+  repoUrl         String
+  submitterName   String?
+  submitterEmail  String?
+  notes           String?
+  suggestedTags   String[]
+  status          SubmissionStatus @default(PENDING)
+  createdAt       DateTime         @default(now())
+  reviewedAt      DateTime?
+
+  @@index([status])
+}
