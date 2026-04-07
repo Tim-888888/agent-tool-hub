@@ -1,65 +1,88 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import Header from "@/components/layout/Header";
+import HeroSection from "@/components/home/HeroSection";
+import FeaturedTools from "@/components/home/FeaturedTools";
+import NewestTools from "@/components/home/NewestTools";
+import CategoryGrid from "@/components/home/CategoryGrid";
+import Footer from "@/components/layout/Footer";
+import { useI18n } from "@/lib/i18n-context";
+import type { Tool, Category } from "@/types";
+
+const PLATFORM_COUNT = 7;
+
+export default function HomePage() {
+  const { t } = useI18n();
+  const [featuredTools, setFeaturedTools] = useState<Tool[]>([]);
+  const [newestTools, setNewestTools] = useState<Tool[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [stats, setStats] = useState<{ tools: number; platforms: number; categories: number }>({
+    tools: 0,
+    platforms: PLATFORM_COUNT,
+    categories: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [featuredRes, newestRes, categoriesRes] = await Promise.all([
+          fetch("/api/tools?limit=6&sort=stars"),
+          fetch("/api/tools/newest"),
+          fetch("/api/categories"),
+        ]);
+
+        const featuredJson = await featuredRes.json();
+        const newestJson = await newestRes.json();
+        const categoriesJson = await categoriesRes.json();
+
+        if (featuredJson.success) {
+          setFeaturedTools(featuredJson.data);
+          setStats((prev) => ({
+            ...prev,
+            tools: featuredJson.meta?.total ?? featuredJson.data.length,
+          }));
+        }
+        if (newestJson.success) {
+          setNewestTools(newestJson.data);
+        }
+        if (categoriesJson.success) {
+          const cats = categoriesJson.data;
+          setCategories(cats);
+          setStats((prev) => ({ ...prev, categories: cats.length }));
+        }
+      } catch (error) {
+        // Silently handle fetch errors — pages show empty state
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  const toolCounts: Record<string, number> = {};
+  for (const tool of featuredTools) {
+    for (const cat of tool.categories) {
+      toolCounts[cat.slug] = (toolCounts[cat.slug] ?? 0) + 1;
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+    <>
+      <Header />
+      <main className="flex-1">
+        <HeroSection stats={stats} />
+        {!loading && (
+          <>
+            <FeaturedTools tools={featuredTools} />
+            <NewestTools tools={newestTools} />
+            <CategoryGrid categories={categories} toolCounts={toolCounts} />
+          </>
+        )}
       </main>
-    </div>
+      <Footer />
+    </>
   );
 }
