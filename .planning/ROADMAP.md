@@ -17,8 +17,8 @@ AgentToolHub is an AI tool discovery platform. This roadmap covers the backend f
 Plans:
 - [x] 01-01-PLAN.md — Activate Prisma + create idempotent seed script (REQ-01, REQ-02)
 - [x] 01-02-PLAN.md — Create all API route handlers for tools and categories (REQ-03, REQ-04)
-- [ ] 01-03-PLAN.md — Update frontend pages to fetch from API routes (REQ-05)
-- [ ] 01-04-PLAN.md — Create API route tests, seed tests, and integration test (REQ-06)
+- [x] 01-03-PLAN.md — Update frontend pages to fetch from API routes (REQ-05)
+- [x] 01-04-PLAN.md — Create API route tests, seed tests, and integration test (REQ-06)
 
 **Scope:**
 - Connect Prisma to PostgreSQL (Supabase)
