@@ -60,15 +60,27 @@ Plans:
 
 ---
 
-## Phase 3: SEO & i18n Routing (Future)
+## Phase 3: SEO & i18n Routing
 
-**Goal:** Proper `[locale]` URL routing, sitemap, robots.txt, structured data for SEO.
+**Goal:** Migrate from client-side-only i18n (localStorage) to URL-based locale routing that is SEO-friendly. Add dynamic metadata, JSON-LD structured data, sitemap, and robots.txt.
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Proxy + dictionaries + [locale] page restructuring + Header locale switcher (D-01, D-02, D-03, D-04, D-05, D-06, D-12)
+- [ ] 03-02-PLAN.md — Dynamic generateMetadata + bilingual content + enhanced JSON-LD (D-07, D-08, D-09)
+- [ ] 03-03-PLAN.md — Dynamic sitemap.ts + robots.ts with locale alternates (D-10, D-11)
 
 **Scope:**
-- `[locale]` dynamic routing
-- Sitemap generation
-- robots.txt
-- Open Graph optimization
+- `[locale]` dynamic segment routing (en default, zh prefixed)
+- Next.js 16 proxy.ts for locale detection and redirects
+- Server-side dictionary loading (no external i18n library)
+- Dynamic generateMetadata with bilingual content per page
+- JSON-LD SoftwareApplication schema with installInstructions per TECHNICAL_DESIGN.md 2.3
+- Dynamic sitemap from database with hreflang alternates
+- robots.txt disallowing /api/ and pointing to sitemap
+
+**Out of scope:** Auto-discovery of new tools, user authentication, community features, additional locales beyond en/zh
 
 ---
 
@@ -80,3 +92,4 @@ Plans:
 - Review submission API
 - Tool submission review workflow
 - Tag voting system
+
