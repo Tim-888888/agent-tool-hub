@@ -14,8 +14,20 @@ interface SyncResult {
   error?: string;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const startTime = Date.now();
+
+  // Log non-cron invocations for monitoring
+  const userAgent = request.headers.get("user-agent") ?? "";
+  if (!userAgent.includes("vercel-cron")) {
+    console.warn(
+      JSON.stringify({
+        event: "sync_non_cron",
+        userAgent,
+        message: "Sync triggered outside Vercel Cron",
+      }),
+    );
+  }
 
   try {
     // Per D-01: only sync existing tools (ACTIVE or FEATURED)
