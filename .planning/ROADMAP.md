@@ -31,15 +31,32 @@ Plans:
 
 ---
 
-## Phase 2: Data Sync & Enrichment (Future)
+## Phase 2: Data Sync & Enrichment
 
-**Goal:** Automate tool data collection from GitHub, npm, and community sources.
+**Goal:** Automate tool data collection from GitHub and npm — sync existing 12 tools' metadata daily, compute weighted ranking scores, and wire scores into the API sort system.
+
+**Requirements:** ROADMAP-02
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Schema migration + data fetching clients (GitHub, npm, README parser, retry) with unit tests
+- [ ] 02-02-PLAN.md — Scoring algorithm + wire score into API sort (D-05, D-06, D-07)
+- [ ] 02-03-PLAN.md — Sync API endpoint + Vercel Cron config + integration tests (D-09, D-10, D-11, D-12)
 
 **Scope:**
-- GitHub API sync script (stars, forks, issues, README)
-- npm download tracking
-- Scoring algorithm implementation
-- Scheduled sync jobs
+- Add score, syncedAt, npmDownloads fields to Tool model
+- GitHub API client (stars, forks, issues, lastCommitAt, language, license)
+- npm Registry client (weekly download counts)
+- README parser (extract features and install guide)
+- Retry utility with exponential backoff
+- Weighted scoring algorithm (stars 0-40 + activity 0-20 + npm 0-20 + forks 0-20)
+- Wire score into buildOrderBy for API ranking
+- Strip score from API responses (ranking-only, per D-06)
+- /api/sync endpoint with per-tool error isolation
+- Vercel Cron for daily sync
+
+**Out of scope:** Auto-discovery of new tools, GitHub App auth, webhook-based real-time sync, user-submitted tools, historical score tracking
 
 ---
 
