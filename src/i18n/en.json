@@ -1,0 +1,60 @@
+{
+  "nav": {
+    "home": "Home",
+    "tools": "Tools",
+    "categories": "Categories",
+    "rankings": "Rankings",
+    "submit": "Submit",
+    "about": "About",
+    "search": "Search tools..."
+  },
+  "hero": {
+    "title": "Discover AI Agent Tools",
+    "subtitle": "Find the best MCP Servers, Skills, and Rules for your AI coding agents",
+    "cta": "Browse Tools"
+  },
+  "home": {
+    "featured": "Featured Tools",
+    "newest": "Newest Tools",
+    "categories": "Categories",
+    "viewAll": "View All"
+  },
+  "tool": {
+    "features": "Features",
+    "installGuide": "Installation Guide",
+    "stars": "stars",
+    "reviews": "reviews",
+    "language": "Language",
+    "license": "License",
+    "author": "Author",
+    "version": "Version",
+    "lastUpdate": "Last Update",
+    "compatibility": "Compatibility",
+    "type": {
+      "mcp_server": "MCP Server",
+      "skill": "Skill",
+      "rule": "Rule"
+    }
+  },
+  "ranking": {
+    "title": "Rankings",
+    "description": "Top-rated tools ranked by community engagement and quality",
+    "overall": "Overall",
+    "weekly": "This Week",
+    "newest": "Newest",
+    "stars": "stars",
+    "rating": "rating"
+  },
+  "submit": {
+    "title": "Submit a Tool",
+    "description": "Share an MCP Server, Skill, or Rule with the community"
+  },
+  "about": {
+    "title": "About AgentToolHub",
+    "description": "AgentToolHub is an open directory of AI agent tools. We help developers discover MCP Servers, Skills, and Rules for Claude Code, Cursor, Cline, OpenClaw, and other AI coding agents."
+  },
+  "footer": {
+    "description": "Discover the best tools for your AI coding agents",
+    "builtWith": "Built with Next.js and Prisma"
+  }
+}

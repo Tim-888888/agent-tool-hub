@@ -1,0 +1,60 @@
+{
+  "nav": {
+    "home": "\u9996\u9875",
+    "tools": "\u5de5\u5177",
+    "categories": "\u5206\u7c7b",
+    "rankings": "\u6392\u884c",
+    "submit": "\u63d0\u4ea4",
+    "about": "\u5173\u4e8e",
+    "search": "\u641c\u7d22\u5de5\u5177..."
+  },
+  "hero": {
+    "title": "\u53d1\u73b0 AI Agent \u5de5\u5177",
+    "subtitle": "\u4e3a\u4f60\u7684 AI \u7f16\u7a0b\u52a9\u624b\u627e\u5230\u6700\u4f73\u7684 MCP Server\u3001Skill \u548c Rule",
+    "cta": "\u6d4f\u89c8\u5de5\u5177"
+  },
+  "home": {
+    "featured": "\u7cbe\u9009\u5de5\u5177",
+    "newest": "\u6700\u65b0\u5de5\u5177",
+    "categories": "\u5206\u7c7b",
+    "viewAll": "\u67e5\u770b\u5168\u90e8"
+  },
+  "tool": {
+    "features": "\u7279\u6027",
+    "installGuide": "\u5b89\u88c5\u6307\u5357",
+    "stars": "\u661f\u6807",
+    "reviews": "\u8bc4\u4ef7",
+    "language": "\u8bed\u8a00",
+    "license": "\u8bb8\u53ef\u8bc1",
+    "author": "\u4f5c\u8005",
+    "version": "\u7248\u672c",
+    "lastUpdate": "\u6700\u540e\u66f4\u65b0",
+    "compatibility": "\u517c\u5bb9\u6027",
+    "type": {
+      "mcp_server": "MCP \u670d\u52a1\u5668",
+      "skill": "Skill",
+      "rule": "Rule"
+    }
+  },
+  "ranking": {
+    "title": "\u6392\u884c\u699c",
+    "description": "\u6839\u636e\u793e\u533a\u53c2\u4e0e\u5ea6\u548c\u8d28\u91cf\u6392\u540d\u7684\u9876\u7ea7\u5de5\u5177",
+    "overall": "\u7efc\u5408",
+    "weekly": "\u672c\u5468",
+    "newest": "\u6700\u65b0",
+    "stars": "\u661f\u6807",
+    "rating": "\u8bc4\u5206"
+  },
+  "submit": {
+    "title": "\u63d0\u4ea4\u5de5\u5177",
+    "description": "\u4e0e\u793e\u533a\u5206\u4eab MCP Server\u3001Skill \u6216 Rule"
+  },
+  "about": {
+    "title": "\u5173\u4e8e AgentToolHub",
+    "description": "AgentToolHub \u662f\u4e00\u4e2a AI agent \u5de5\u5177\u7684\u5f00\u653e\u76ee\u5f55\u3002\u6211\u4eec\u5e2e\u52a9\u5f00\u53d1\u8005\u53d1\u73b0\u7528\u4e8e Claude Code\u3001Cursor\u3001Cline\u3001OpenClaw \u7b49 AI \u7f16\u7a0b\u52a9\u624b\u7684 MCP Server\u3001Skill \u548c Rule\u3002"
+  },
+  "footer": {
+    "description": "\u53d1\u73b0\u9002\u5408\u4f60 AI \u7f16\u7a0b\u52a9\u624b\u7684\u6700\u4f73\u5de5\u5177",
+    "builtWith": "\u4f7f\u7528 Next.js \u548c Prisma \u6784\u5efa"
+  }
+}
