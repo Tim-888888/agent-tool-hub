@@ -40,9 +40,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Schema migration + data fetching clients (GitHub, npm, README parser, retry) with unit tests
-- [ ] 02-02-PLAN.md — Scoring algorithm + wire score into API sort (D-05, D-06, D-07)
-- [ ] 02-03-PLAN.md — Sync API endpoint + Vercel Cron config + integration tests (D-09, D-10, D-11, D-12)
+- [x] 02-01-PLAN.md — Schema migration + data fetching clients (GitHub, npm, README parser, retry) with unit tests
+- [x] 02-02-PLAN.md — Scoring algorithm + wire score into API sort (D-05, D-06, D-07)
+- [x] 02-03-PLAN.md — Sync API endpoint + Vercel Cron config + integration tests (D-09, D-10, D-11, D-12)
 
 **Scope:**
 - Add score, syncedAt, npmDownloads fields to Tool model
