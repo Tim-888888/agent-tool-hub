@@ -60,6 +60,10 @@ model Tool {
   avgRating     Float    @default(0)
   ratingCount   Int      @default(0)
 
+  score        Float?    // Weighted ranking score (0-100), per D-05/D-08
+  syncedAt     DateTime? // Last successful sync timestamp, per D-15
+  npmDownloads Int?      // Weekly npm download count, per D-04
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -73,6 +77,7 @@ model Tool {
   @@index([lastCommitAt])
   @@index([isFeatured])
   @@index([name])
+  @@index([score])
 }
 
 model Category {
