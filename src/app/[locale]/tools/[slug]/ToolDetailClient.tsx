@@ -163,7 +163,7 @@ export default function ToolDetailClient({ tool }: Props) {
                     )}
                     <div className="flex items-center justify-between">
                       <dt className="text-sm text-[var(--text-secondary)]">{t('tool.lastUpdate')}</dt>
-                      <dd className="text-sm font-medium text-[var(--text-primary)]">{formatDate(tool.lastCommitAt)}</dd>
+                      <dd className="text-sm font-medium text-[var(--text-primary)]">{formatDate(tool.lastCommitAt ?? tool.updatedAt)}</dd>
                     </div>
                   </dl>
                 </div>
