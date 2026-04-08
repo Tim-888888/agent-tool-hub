@@ -201,7 +201,7 @@ describe('GET /api/tools', () => {
     );
   });
 
-  it('sorts by stars (default)', async () => {
+  it('sorts by score (default)', async () => {
     mockFindMany.mockResolvedValue([]);
     mockCount.mockResolvedValue(0);
 
@@ -210,7 +210,7 @@ describe('GET /api/tools', () => {
 
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        orderBy: { stars: 'desc' },
+        orderBy: { score: 'desc' },
       }),
     );
   });
