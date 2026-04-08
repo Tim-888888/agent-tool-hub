@@ -1,0 +1,151 @@
+import { prisma } from "@/lib/db";
+import { successResponse, errorResponse } from "@/lib/api-utils";
+import { parseRepoUrl, fetchRepoData, fetchReadme } from "@/lib/github-client";
+import { fetchWeeklyDownloads } from "@/lib/npm-client";
+import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser";
+import { withRetry } from "@/lib/retry";
+import { computeScore } from "@/lib/scoring";
+
+export const dynamic = "force-dynamic";
+
+interface SyncResult {
+  tool: string;
+  status: "success" | "failed";
+  error?: string;
+}
+
+export async function GET() {
+  const startTime = Date.now();
+
+  try {
+    // Per D-01: only sync existing tools (ACTIVE or FEATURED)
+    const tools = await prisma.tool.findMany({
+      where: { status: { in: ["ACTIVE", "FEATURED"] } },
+      select: {
+        id: true,
+        name: true,
+        repoUrl: true,
+        npmPackage: true,
+      },
+    });
+
+    // Per D-14: log per-tool results
+    const results: SyncResult[] = [];
+
+    for (const tool of tools) {
+      try {
+        // Parse GitHub owner/repo from repoUrl
+        const parsed = parseRepoUrl(tool.repoUrl);
+        if (!parsed) {
+          results.push({
+            tool: tool.name,
+            status: "failed",
+            error: `Invalid repo URL: ${tool.repoUrl}`,
+          });
+          continue;
+        }
+
+        const { owner, repo } = parsed;
+
+        // Fetch GitHub repo data, README, and npm downloads in parallel
+        const [repoResult, readmeResult, downloadsResult] =
+          await Promise.allSettled([
+            withRetry(() => fetchRepoData(owner, repo)),
+            withRetry(() => fetchReadme(owner, repo)),
+            tool.npmPackage
+              ? withRetry(() => fetchWeeklyDownloads(tool.npmPackage!))
+              : Promise.resolve(null as number | null),
+          ]);
+
+        // Extract values, defaulting to null on failure
+        const repoData =
+          repoResult.status === "fulfilled" ? repoResult.value : null;
+        const readmeContent =
+          readmeResult.status === "fulfilled" ? readmeResult.value : null;
+        const npmDownloads =
+          downloadsResult.status === "fulfilled"
+            ? (downloadsResult.value as number | null)
+            : null;
+
+        if (!repoData) {
+          // If we can't get repo data at all, count as failed
+          const repoError =
+            repoResult.status === "rejected"
+              ? String(repoResult.reason)
+              : "No repo data";
+          results.push({
+            tool: tool.name,
+            status: "failed",
+            error: repoError,
+          });
+          continue;
+        }
+
+        // Parse README content
+        const features = readmeContent ? extractFeatures(readmeContent) : [];
+        const installGuide = readmeContent
+          ? extractInstallGuide(readmeContent)
+          : null;
+
+        // Compute score per D-05
+        const score = computeScore({
+          stars: repoData.stargazers_count,
+          forks: repoData.forks_count,
+          lastCommitAt: new Date(repoData.pushed_at),
+          npmDownloads,
+        });
+
+        // Update tool record per D-08, D-15
+        await prisma.tool.update({
+          where: { id: tool.id },
+          data: {
+            stars: repoData.stargazers_count,
+            forks: repoData.forks_count,
+            openIssues: repoData.open_issues_count,
+            lastCommitAt: new Date(repoData.pushed_at),
+            language: repoData.language,
+            license: repoData.license?.key ?? null,
+            description: repoData.description ?? undefined,
+            featuresEn:
+              features.length > 0 ? features : undefined,
+            installGuide: installGuide
+              ? { markdown: installGuide }
+              : undefined,
+            npmDownloads: npmDownloads ?? undefined,
+            score,
+            syncedAt: new Date(),
+          },
+        });
+
+        results.push({ tool: tool.name, status: "success" });
+      } catch (error) {
+        // Per D-12: individual tool failures don't block others
+        results.push({
+          tool: tool.name,
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    const synced = results.filter((r) => r.status === "success").length;
+    const failed = results.filter((r) => r.status === "failed").length;
+    const durationMs = Date.now() - startTime;
+
+    // Per D-14: structured logging
+    console.log(
+      JSON.stringify({
+        event: "sync_complete",
+        synced,
+        failed,
+        durationMs,
+        results,
+      }),
+    );
+
+    return successResponse({ results, synced, failed, durationMs });
+  } catch (error) {
+    console.error("Sync fatal error:", error);
+    return errorResponse("Sync failed", 500);
+  }
+}
