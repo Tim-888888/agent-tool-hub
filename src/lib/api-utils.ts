@@ -83,8 +83,10 @@ export function buildOrderBy(sortParam: string | null): PrismaOrderBy {
       return { avgRating: "desc" };
     case "name":
       return { name: "asc" };
+    case "score":
+      return { score: "desc" as const };
     default:
-      return { stars: "desc" };
+      return { score: "desc" as const };
   }
 }
 
@@ -101,7 +103,7 @@ export const TOOL_PRISMA_INCLUDE = {
 export function mapToolResponse(tool: any): any {
   if (!tool) return null;
 
-  const { categories, platforms, ...rest } = tool;
+  const { categories, platforms, score, syncedAt, npmDownloads, ...rest } = tool;
 
   return {
     ...rest,
