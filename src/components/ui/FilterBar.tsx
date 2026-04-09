@@ -13,13 +13,6 @@ interface FilterBarProps {
 
 const TYPE_VALUES = ['', 'mcp', 'skill', 'rule'] as const;
 
-const SORT_OPTIONS = [
-  { value: 'stars', labelEn: 'Most Stars', labelZh: '最多星标' },
-  { value: 'recent', labelEn: 'Recently Updated', labelZh: '最近更新' },
-  { value: 'rating', labelEn: 'Highest Rated', labelZh: '最高评分' },
-  { value: 'name', labelEn: 'Name A-Z', labelZh: '名称排序' },
-] as const;
-
 export default function FilterBar({
   currentFilters,
   onFilterChange,
@@ -43,10 +36,10 @@ export default function FilterBar({
   }, []);
 
   const typeLabels: Record<string, string> = {
-    '': locale === 'zh' ? '所有类型' : 'All Types',
-    mcp: 'MCP Server',
-    skill: 'Skill',
-    rule: 'Rule',
+    '': t('filter.allTypes'),
+    mcp: t('tool.type.mcp_server'),
+    skill: t('tool.type.skill'),
+    rule: t('tool.type.rule'),
   };
 
   return (
@@ -80,7 +73,7 @@ export default function FilterBar({
         }
         className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] outline-none focus:border-[var(--color-accent)] dark:bg-[var(--bg-tertiary)]"
       >
-        <option value="">{locale === 'zh' ? '所有平台' : 'All Platforms'}</option>
+        <option value="">{t('filter.allPlatforms')}</option>
         {ALL_PLATFORMS.map((p) => (
           <option key={p.slug} value={p.slug}>{p.name}</option>
         ))}
@@ -93,7 +86,7 @@ export default function FilterBar({
         }
         className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] outline-none focus:border-[var(--color-accent)] dark:bg-[var(--bg-tertiary)]"
       >
-        <option value="">{locale === 'zh' ? '所有分类' : 'All Categories'}</option>
+        <option value="">{t('filter.allCategories')}</option>
         {categories.map((c) => (
           <option key={c.slug} value={c.slug}>
             {locale === 'zh' ? c.nameZh : c.nameEn}
@@ -108,11 +101,10 @@ export default function FilterBar({
         }
         className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] outline-none focus:border-[var(--color-accent)] dark:bg-[var(--bg-tertiary)]"
       >
-        {SORT_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {locale === 'zh' ? opt.labelZh : opt.labelEn}
-          </option>
-        ))}
+        <option value="stars">{t('filter.mostStars')}</option>
+        <option value="recent">{t('filter.recentlyUpdated')}</option>
+        <option value="rating">{t('filter.highestRated')}</option>
+        <option value="name">{t('filter.nameAZ')}</option>
       </select>
     </div>
   );

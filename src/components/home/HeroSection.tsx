@@ -19,15 +19,15 @@ export default function HeroSection({ stats }: HeroSectionProps) {
         <div className="mt-8 flex gap-8">
           <div>
             <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.tools}</div>
-            <div className="text-sm text-[var(--text-secondary)]">Tools</div>
+            <div className="text-sm text-[var(--text-secondary)]">{t('hero.tools')}</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.platforms}</div>
-            <div className="text-sm text-[var(--text-secondary)]">Platforms</div>
+            <div className="text-sm text-[var(--text-secondary)]">{t('hero.platforms')}</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-[var(--text-primary)]">{stats.categories}</div>
-            <div className="text-sm text-[var(--text-secondary)]">Categories</div>
+            <div className="text-sm text-[var(--text-secondary)]">{t('hero.categories')}</div>
           </div>
         </div>
       </div>

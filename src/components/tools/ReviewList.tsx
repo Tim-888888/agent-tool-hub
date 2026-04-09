@@ -100,7 +100,7 @@ export default function ReviewList({ toolSlug, onReviewsLoaded, refreshTrigger }
               <div className="h-6 w-6 rounded-full bg-[var(--bg-tertiary)]" />
             )}
             <span className="text-sm font-medium text-[var(--text-primary)]">
-              {review.user.name ?? 'Anonymous'}
+              {review.user.name ?? t('common.anonymous')}
             </span>
             <StarRating rating={review.rating} />
             <time

@@ -17,7 +17,7 @@ interface ApiMeta {
 }
 
 export default function ToolsClient() {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get("q") ?? "";
   const [filters, setFilters] = useState<ToolFilters>({ sort: "stars", query: urlQuery || undefined });
@@ -73,12 +73,8 @@ export default function ToolsClient() {
             </h1>
             <p className="mt-3 text-lg text-[var(--text-secondary)]">
               {filters.query
-                ? (locale === 'zh'
-                    ? `搜索 "${filters.query}" 找到 ${totalCount} 个工具`
-                    : `${totalCount} tool${totalCount !== 1 ? 's' : ''} found for "${filters.query}"`)
-                : (locale === 'zh'
-                    ? `浏览和发现 ${totalCount} 个 MCP 服务器、Skill 和 Rule`
-                    : `Browse and discover ${totalCount} MCP Servers, Skills, and Rules for your AI coding agents.`)
+                ? t('tools.searchResult').replace('{count}', String(totalCount)).replace('{query}', filters.query)
+                : t('tools.browseTitle').replace('{count}', String(totalCount))
               }
             </p>
           </div>
@@ -96,10 +92,10 @@ export default function ToolsClient() {
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="mb-4 text-5xl">🔍</div>
                 <h2 className="text-xl font-semibold text-[var(--text-primary)]">
-                  {locale === 'zh' ? '未找到工具' : 'No tools found'}
+                  {t('tools.noTools')}
                 </h2>
                 <p className="mt-2 text-[var(--text-secondary)]">
-                  {locale === 'zh' ? '尝试调整过滤条件或搜索关键词。' : 'Try adjusting your filters or search query.'}
+                  {t('tools.noToolsDesc')}
                 </p>
               </div>
             ) : (

@@ -1,12 +1,17 @@
+'use client';
+
 import type { Tool } from '@/types';
+import { useI18n } from '@/lib/i18n-context';
 
 interface CompatibilityMatrixProps {
   tool: Tool;
 }
 
 export default function CompatibilityMatrix({ tool }: CompatibilityMatrixProps) {
+  const { t } = useI18n();
+
   if (tool.platforms.length === 0) {
-    return <p className="text-sm text-[var(--text-secondary)]">No compatibility data</p>;
+    return <p className="text-sm text-[var(--text-secondary)]">{t('tool.noCompatibilityData')}</p>;
   }
 
   return (

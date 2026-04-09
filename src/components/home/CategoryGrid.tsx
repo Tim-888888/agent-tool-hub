@@ -10,7 +10,7 @@ interface CategoryGridProps {
 }
 
 export default function CategoryGrid({ categories, toolCounts }: CategoryGridProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   if (categories.length === 0) return null;
 
@@ -26,10 +26,10 @@ export default function CategoryGrid({ categories, toolCounts }: CategoryGridPro
               className="rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] p-4 transition-all hover:border-[var(--color-accent)]/30 hover:shadow-[var(--shadow-md)]"
             >
               <h3 className="font-semibold text-[var(--text-primary)]">
-                {cat.nameEn}
+                {locale === 'zh' ? cat.nameZh : cat.nameEn}
               </h3>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                {toolCounts[cat.slug] ?? 0} tools
+                {toolCounts[cat.slug] ?? 0} {t('home.tools')}
               </p>
             </Link>
           ))}

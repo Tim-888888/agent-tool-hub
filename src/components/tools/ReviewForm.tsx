@@ -145,7 +145,7 @@ export default function ReviewForm({ toolSlug, existingReview, onSubmitted }: Re
           type="text"
           value={platform}
           onChange={(e) => setPlatform(e.target.value.slice(0, 50))}
-          placeholder="Claude Code, Cursor, etc."
+          placeholder={t('community.platformPlaceholder')}
           maxLength={50}
           className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:border-[var(--color-accent)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
         />
@@ -190,7 +190,7 @@ export default function ReviewForm({ toolSlug, existingReview, onSubmitted }: Re
           onClick={() => setExpanded(false)}
           className="rounded-xl border border-[var(--border)] px-5 py-2 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
         >
-          Cancel
+          {t('common.cancel')}
         </button>
       </div>
     </div>

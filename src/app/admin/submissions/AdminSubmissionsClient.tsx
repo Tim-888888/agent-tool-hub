@@ -26,7 +26,7 @@ export default function AdminSubmissionsClient({
   const [submissions, setSubmissions] = useState(initialSubmissions)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
 
   async function handleAction(
     submissionId: string,
@@ -51,12 +51,12 @@ export default function AdminSubmissionsClient({
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold text-[var(--text-primary)]">
-        Submissions ({submissions.length} pending)
+        {t('admin.submissionsTitle').replace('{count}', String(submissions.length))}
       </h1>
 
       {submissions.length === 0 ? (
         <p className="mt-6 text-[var(--text-secondary)]">
-          No pending submissions.
+          {t('admin.noSubmissions')}
         </p>
       ) : (
         <div className="mt-6 space-y-4">
@@ -71,12 +71,12 @@ export default function AdminSubmissionsClient({
                     {sub.repoUrl}
                   </p>
                   <p className="text-sm text-[var(--text-secondary)]">
-                    by {sub.user?.name ?? "Unknown"} on{" "}
+                    {t('admin.by')} {sub.user?.name ?? "Unknown"} {t('admin.on')}{" "}
                     {new Date(sub.createdAt).toLocaleDateString()}
                   </p>
                 </div>
                 <span className="rounded-full border border-[var(--color-warning)]/30 bg-[var(--color-warning)]/10 px-2.5 py-1 text-xs font-medium text-[var(--color-warning)]">
-                  PENDING
+                  {t('common.pending')}
                 </span>
               </div>
 
@@ -102,20 +102,20 @@ export default function AdminSubmissionsClient({
               {rejectingId === sub.id ? (
                 <div className="mt-4 flex items-center gap-3 rounded-xl bg-[var(--bg-secondary)] p-3">
                   <p className="text-sm text-[var(--text-secondary)]">
-                    Reject this submission? The submitter will not be notified.
+                    {t('admin.rejectConfirm')}
                   </p>
                   <button
                     onClick={() => handleAction(sub.id, "reject")}
                     disabled={loading === sub.id}
                     className="rounded-lg bg-[var(--color-danger)] px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
                   >
-                    Confirm Reject
+                    {t('common.confirmReject')}
                   </button>
                   <button
                     onClick={() => setRejectingId(null)}
                     className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               ) : (
@@ -125,14 +125,14 @@ export default function AdminSubmissionsClient({
                     disabled={loading === sub.id}
                     className="rounded-lg bg-[var(--color-accent)] px-4 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
                   >
-                    Approve
+                    {t('common.approve')}
                   </button>
                   <button
                     onClick={() => setRejectingId(sub.id)}
                     disabled={loading === sub.id}
                     className="rounded-lg border border-[var(--color-danger)] px-4 py-1.5 text-xs font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10 disabled:opacity-50"
                   >
-                    Reject
+                    {t('common.reject')}
                   </button>
                 </div>
               )}

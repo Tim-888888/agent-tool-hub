@@ -11,18 +11,24 @@
   "hero": {
     "title": "Discover AI Agent Tools",
     "subtitle": "Find the best MCP Servers, Skills, and Rules for your AI coding agents",
-    "cta": "Browse Tools"
+    "cta": "Browse Tools",
+    "tools": "Tools",
+    "platforms": "Platforms",
+    "categories": "Categories"
   },
   "home": {
     "featured": "Featured Tools",
     "newest": "Newest Tools",
     "categories": "Categories",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "tools": "tools"
   },
   "tool": {
     "features": "Features",
     "installGuide": "Installation Guide",
+    "quickInstall": "Quick Install",
     "stars": "stars",
+    "forks": "forks",
     "reviews": "reviews",
     "language": "Language",
     "license": "License",
@@ -30,11 +36,38 @@
     "version": "Version",
     "lastUpdate": "Last Update",
     "compatibility": "Compatibility",
+    "details": "Details",
+    "viewOnGithub": "View on GitHub",
+    "tags": "Tags",
+    "noCompatibilityData": "No compatibility data",
     "type": {
       "mcp_server": "MCP Server",
       "skill": "Skill",
       "rule": "Rule"
     }
+  },
+  "tools": {
+    "browseTitle": "Browse and discover {count} MCP Servers, Skills, and Rules",
+    "searchResult": "Found {count} tool for \"{query}\"",
+    "searchResult_plural": "Found {count} tools for \"{query}\"",
+    "noTools": "No tools found",
+    "noToolsDesc": "Try adjusting your filters or search query."
+  },
+  "category": {
+    "toolsFound": "{count} tools in this category",
+    "noTools": "No tools in this category yet",
+    "noToolsDesc": "Check back later for new additions.",
+    "browseAll": "Browse All Tools"
+  },
+  "filter": {
+    "sort": "Sort by",
+    "mostStars": "Most Stars",
+    "recentlyUpdated": "Recently Updated",
+    "highestRated": "Highest Rated",
+    "nameAZ": "Name A-Z",
+    "allTypes": "All Types",
+    "allPlatforms": "All Platforms",
+    "allCategories": "All Categories"
   },
   "ranking": {
     "title": "Rankings",
@@ -57,6 +90,32 @@
     "description": "Discover the best tools for your AI coding agents",
     "builtWith": "Built with Next.js and Prisma"
   },
+  "auth": {
+    "signIn": "Sign in",
+    "signInWithGithub": "Sign in with GitHub",
+    "signedInAs": "Signed in as {name}",
+    "signOut": "Sign out"
+  },
+  "common": {
+    "copy": "Copy",
+    "copied": "Copied!",
+    "copyToClipboard": "Copy to clipboard",
+    "cancel": "Cancel",
+    "approve": "Approve",
+    "reject": "Reject",
+    "confirmReject": "Confirm Reject",
+    "pending": "PENDING",
+    "anonymous": "Anonymous",
+    "switchToEnglish": "Switch to English",
+    "switchToChinese": "Switch to Chinese"
+  },
+  "admin": {
+    "submissionsTitle": "Submissions ({count} pending)",
+    "noSubmissions": "No pending submissions.",
+    "rejectConfirm": "Reject this submission? The submitter will not be notified.",
+    "by": "by",
+    "on": "on"
+  },
   "community": {
     "reviews": "Reviews",
     "writeReview": "Write a Review",
@@ -70,6 +129,7 @@
     "content": "Content",
     "contentPlaceholder": "Share your experience...",
     "platform": "Platform",
+    "platformPlaceholder": "Claude Code, Cursor, etc.",
     "useCase": "Use case",
     "useCasePlaceholder": "How do you use this tool?",
     "reviewsCount": "reviews",
@@ -81,6 +141,7 @@
     "submitDuplicate": "This repository has already been submitted or exists in our database",
     "submitNotFound": "Could not verify this repository. Please check the URL.",
     "signInToSubmit": "Sign in to submit a tool",
+    "signInGithub": "Sign in with GitHub",
     "notes": "Notes (optional)",
     "notesPlaceholder": "Anything you'd like to share about this tool...",
     "suggestedTags": "Suggested Tags (optional)",

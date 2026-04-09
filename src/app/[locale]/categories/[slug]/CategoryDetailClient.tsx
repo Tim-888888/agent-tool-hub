@@ -39,13 +39,16 @@ export default function CategoryDetailClient({ category, tools }: CategoryDetail
             <p className="mt-3 text-lg text-[var(--text-secondary)]">
               {locale === 'zh' ? category.descriptionZh : (category.descriptionEn ?? '')}
             </p>
+            <p className="mt-2 text-sm text-[var(--text-tertiary)]">
+              {t('category.toolsFound').replace('{count}', String(tools.length))}
+            </p>
           </div>
         </section>
         <section className="py-8">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             {tools.length === 0 ? (
               <p className="text-center text-[var(--text-secondary)]">
-                {locale === 'zh' ? '\u6b64\u5206\u7c7b\u6682\u65e0\u5de5\u5177' : 'No tools in this category yet'}
+                {t('category.noTools')}
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useSession, signIn, signOut } from "next-auth/react"
+import { useI18n } from "@/lib/i18n-context"
 
 function GitHubIcon({ className }: { className?: string }) {
   return (
@@ -12,13 +13,14 @@ function GitHubIcon({ className }: { className?: string }) {
 
 export default function LoginButton() {
   const { data: session } = useSession()
+  const { t } = useI18n()
 
   if (session?.user) {
     return (
       <button
         onClick={() => signOut()}
         className="flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-        aria-label={`Signed in as ${session.user.name}`}
+        aria-label={t('auth.signedInAs').replace('{name}', session.user.name ?? '')}
       >
         {session.user.image ? (
           <img src={session.user.image} alt="" className="h-6 w-6 rounded-full" />
@@ -34,10 +36,10 @@ export default function LoginButton() {
     <button
       onClick={() => signIn("github")}
       className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-      aria-label="Sign in with GitHub"
+      aria-label={t('auth.signInWithGithub')}
     >
       <GitHubIcon className="h-3.5 w-3.5" />
-      <span>Sign in</span>
+      <span>{t('auth.signIn')}</span>
     </button>
   )
 }

@@ -10,7 +10,7 @@ interface ToolCardProps {
 }
 
 export default function ToolCard({ tool }: ToolCardProps) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
 
   return (
     <Link
@@ -36,8 +36,8 @@ export default function ToolCard({ tool }: ToolCardProps) {
         </div>
       )}
       <div className="mt-3 flex items-center gap-3 text-xs text-[var(--text-tertiary)]">
-        <span>{tool.stars} stars</span>
-        <span>{tool.type}</span>
+        <span>{tool.stars} {t('tool.stars')}</span>
+        <span>{t('tool.type.' + tool.type.toLowerCase())}</span>
       </div>
     </Link>
   );

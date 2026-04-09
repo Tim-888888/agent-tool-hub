@@ -1,25 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useI18n } from '@/lib/i18n-context';
 import LoginButton from '@/components/auth/LoginButton';
 
 function getLocalePath(path: string, locale: string): string {
-  return locale === 'en' ? path : `/zh${path}`;
+  return `/${locale}${path}`;
 }
 
 export default function Header() {
   const { locale, t } = useI18n();
   const pathname = usePathname();
-  const router = useRouter();
+
+  // Strip current locale prefix to get the base path
+  const basePath = pathname.replace(/^\/(en|zh)/, '') || '/';
 
   const toggleLocale = () => {
-    if (locale === 'en') {
-      router.push(`/zh${pathname}`);
-    } else {
-      router.push(pathname.replace(/^\/zh/, '') || '/');
-    }
+    const newLocale = locale === 'en' ? 'zh' : 'en';
+    // Set cookie so proxy middleware respects user's choice
+    document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=${60 * 60 * 24 * 365}`;
+    // Full page navigation to ensure locale change takes effect
+    window.location.href = `/${newLocale}${basePath}`;
   };
 
   return (
@@ -54,7 +56,7 @@ export default function Header() {
           <button
             onClick={toggleLocale}
             className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            aria-label={`Switch to ${locale === 'en' ? 'Chinese' : 'English'}`}
+            aria-label={locale === 'en' ? t('common.switchToChinese') : t('common.switchToEnglish')}
           >
             {locale === 'en' ? '\u4e2d\u6587' : 'EN'}
           </button>

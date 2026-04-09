@@ -5,6 +5,12 @@ const locales = ['en', 'zh'] as const;
 const defaultLocale = 'en';
 
 function getLocale(request: NextRequest): string {
+  // Cookie takes priority (set by language toggle)
+  const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
+  if (cookieLocale && locales.includes(cookieLocale as (typeof locales)[number])) {
+    return cookieLocale;
+  }
+
   const acceptLanguage = request.headers.get('accept-language') ?? '';
 
   let headerLocales: string[] = [];
@@ -64,31 +70,12 @@ export function proxy(request: NextRequest) {
   );
 
   if (pathnameHasLocale) {
-    // If it's the default locale prefix, strip it (redirect to clean URL)
-    const isDefaultLocalePrefix =
-      pathname.startsWith(`/${defaultLocale}/`) || pathname === `/${defaultLocale}`;
-
-    if (isDefaultLocalePrefix) {
-      const cleanPath = pathname.replace(new RegExp(`^/${defaultLocale}`), '') || '/';
-      const url = request.nextUrl.clone();
-      url.pathname = cleanPath;
-      return NextResponse.redirect(url, 301);
-    }
-    // Non-default locale prefix stays (e.g., /zh/tools/xxx)
+    // Locale prefix already present -- serve directly, no redirect
     return;
   }
 
-  // No locale prefix -- detect locale
+  // No locale prefix -- detect locale and redirect
   const locale = getLocale(request);
-
-  if (locale === defaultLocale) {
-    // Rewrite internally to /en/path so [locale] segment resolves
-    const url = request.nextUrl.clone();
-    url.pathname = `/${defaultLocale}${pathname}`;
-    return NextResponse.rewrite(url);
-  }
-
-  // Non-default locale: redirect to /zh/path
   const url = request.nextUrl.clone();
   url.pathname = `/${locale}${pathname}`;
   const response = NextResponse.redirect(url);
