@@ -88,15 +88,20 @@ export async function POST(
       return errorResponse("Tool not found", 404);
     }
 
+    const userId = session?.user?.id;
+    if (!userId) {
+      return errorResponse("User ID not found in session", 401);
+    }
+
     const review = await prisma.review.upsert({
       where: {
         userId_toolId: {
-          userId: session!.user!.id,
+          userId,
           toolId: tool.id,
         },
       },
       create: {
-        userId: session!.user!.id,
+        userId,
         toolId: tool.id,
         rating,
         content: content ?? null,

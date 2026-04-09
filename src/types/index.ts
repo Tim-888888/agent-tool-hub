@@ -11,6 +11,7 @@ export interface Category {
   nameEn: string;
   nameZh: string;
   slug: string;
+  icon: string;
   descriptionEn?: string;
   descriptionZh?: string;
   toolCount?: number;

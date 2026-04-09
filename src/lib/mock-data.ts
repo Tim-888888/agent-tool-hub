@@ -11,18 +11,18 @@ export const PLATFORMS = [
 ];
 
 export const CATEGORIES: Category[] = [
-  { id: '1', nameEn: 'Search', nameZh: '\u641c\u7d22', slug: 'search', descriptionEn: 'Search tools for AI agents' },
-  { id: '2', nameEn: 'File System', nameZh: '\u6587\u4ef6\u7cfb\u7edf', slug: 'file-system', descriptionEn: 'File system tools for AI agents' },
-  { id: '3', nameEn: 'Database', nameZh: '\u6570\u636e\u5e93', slug: 'database', descriptionEn: 'Database tools for AI agents' },
-  { id: '4', nameEn: 'Communication', nameZh: '\u901a\u4fe1', slug: 'communication', descriptionEn: 'Communication tools for AI agents' },
-  { id: '5', nameEn: 'Development', nameZh: '\u5f00\u53d1', slug: 'development', descriptionEn: 'Development tools for AI agents' },
-  { id: '6', nameEn: 'Productivity', nameZh: '\u6548\u7387', slug: 'productivity', descriptionEn: 'Productivity tools for AI agents' },
-  { id: '7', nameEn: 'Data Analysis', nameZh: '\u6570\u636e\u5206\u6790', slug: 'data-analysis', descriptionEn: 'Data analysis tools for AI agents' },
-  { id: '8', nameEn: 'AI/ML', nameZh: 'AI/ML', slug: 'ai-ml', descriptionEn: 'AI and ML tools for AI agents' },
-  { id: '9', nameEn: 'Security', nameZh: '\u5b89\u5168', slug: 'security', descriptionEn: 'Security tools for AI agents' },
-  { id: '10', nameEn: 'Testing', nameZh: '\u6d4b\u8bd5', slug: 'testing', descriptionEn: 'Testing tools for AI agents' },
-  { id: '11', nameEn: 'Deployment', nameZh: '\u90e8\u7f72', slug: 'deployment', descriptionEn: 'Deployment tools for AI agents' },
-  { id: '12', nameEn: 'Documentation', nameZh: '\u6587\u6863', slug: 'documentation', descriptionEn: 'Documentation tools for AI agents' },
+  { id: '1', nameEn: 'Search', nameZh: '\u641c\u7d22', slug: 'search', icon: 'Search', descriptionEn: 'Search tools for AI agents' },
+  { id: '2', nameEn: 'File System', nameZh: '\u6587\u4ef6\u7cfb\u7edf', slug: 'file-system', icon: 'FolderOpen', descriptionEn: 'File system tools for AI agents' },
+  { id: '3', nameEn: 'Database', nameZh: '\u6570\u636e\u5e93', slug: 'database', icon: 'Database', descriptionEn: 'Database tools for AI agents' },
+  { id: '4', nameEn: 'Communication', nameZh: '\u901a\u4fe1', slug: 'communication', icon: 'Mail', descriptionEn: 'Communication tools for AI agents' },
+  { id: '5', nameEn: 'Development', nameZh: '\u5f00\u53d1', slug: 'development', icon: 'Wrench', descriptionEn: 'Development tools for AI agents' },
+  { id: '6', nameEn: 'Productivity', nameZh: '\u6548\u7387', slug: 'productivity', icon: 'Zap', descriptionEn: 'Productivity tools for AI agents' },
+  { id: '7', nameEn: 'Data Analysis', nameZh: '\u6570\u636e\u5206\u6790', slug: 'data-analysis', icon: 'BarChart3', descriptionEn: 'Data analysis tools for AI agents' },
+  { id: '8', nameEn: 'AI/ML', nameZh: 'AI/ML', slug: 'ai-ml', icon: 'Brain', descriptionEn: 'AI and ML tools for AI agents' },
+  { id: '9', nameEn: 'Security', nameZh: '\u5b89\u5168', slug: 'security', icon: 'Shield', descriptionEn: 'Security tools for AI agents' },
+  { id: '10', nameEn: 'Testing', nameZh: '\u6d4b\u8bd5', slug: 'testing', icon: 'Plug', descriptionEn: 'Testing tools for AI agents' },
+  { id: '11', nameEn: 'Deployment', nameZh: '\u90e8\u7f72', slug: 'deployment', icon: 'Cloud', descriptionEn: 'Deployment tools for AI agents' },
+  { id: '12', nameEn: 'Documentation', nameZh: '\u6587\u6863', slug: 'documentation', icon: 'Image', descriptionEn: 'Documentation tools for AI agents' },
 ];
 
 export const TOOLS: Tool[] = [

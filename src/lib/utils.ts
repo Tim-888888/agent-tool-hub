@@ -27,6 +27,19 @@ export function getToolTypeColor(type: string): string {
   }
 }
 
+export function getPlatformColor(slug: string): string {
+  const colors: Record<string, string> = {
+    'claude-code': '#d97706',
+    'cursor': '#3b82f6',
+    'windsurf': '#06b6d4',
+    'copilot': '#6e40c9',
+    'cline': '#10b981',
+    'aider': '#ef4444',
+    'continue': '#8b5cf6',
+  };
+  return colors[slug] ?? '#6e6e73';
+}
+
 export function cn(...classes: (string | boolean | undefined | null)[]): string {
   return classes.filter(Boolean).join(' ');
 }
