@@ -22,7 +22,9 @@ export default function ToolCard({ tool }: ToolCardProps) {
           {tool.name}
         </h3>
       </div>
-      <p className="mt-2 line-clamp-2 text-sm text-[var(--text-secondary)]">{tool.description}</p>
+      <p className="mt-2 line-clamp-2 text-sm text-[var(--text-secondary)]">
+        {locale === 'zh' && tool.descriptionZh ? tool.descriptionZh : tool.description}
+      </p>
       {tool.topTags && tool.topTags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1 overflow-hidden">
           {tool.topTags.slice(0, 3).map((tag) => (
