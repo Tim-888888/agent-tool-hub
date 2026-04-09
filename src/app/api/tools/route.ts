@@ -1,5 +1,7 @@
 import { type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+
+export const revalidate = 60;
 import {
   parsePagination,
   buildWhereClause,

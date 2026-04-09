@@ -6,6 +6,8 @@ import {
   errorResponse,
 } from "@/lib/api-utils";
 
+export const revalidate = 60;
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ slug: string }> },

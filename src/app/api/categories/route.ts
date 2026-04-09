@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 
+export const revalidate = 300;
+
 export async function GET() {
   try {
     const categories = await prisma.category.findMany({
