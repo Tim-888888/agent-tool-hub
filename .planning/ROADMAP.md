@@ -91,11 +91,11 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Auth foundation: Prisma schema (User/Account/ToolTagVote), Auth.js v5 GitHub OAuth, auth helpers, SessionProvider, LoginButton, tag presets (D-01 to D-04, D-10, D-18, D-20, D-23)
-- [ ] 04-02-PLAN.md — Review system: Review API (GET list + POST upsert), RatingDistribution, ReviewForm, ReviewList, StarRating interactive mode, ReviewSection expansion (D-05 to D-09)
-- [ ] 04-03-PLAN.md — Tag voting: Tag API (GET counts + POST vote/unvote toggle), TagVoting component with framer-motion, ToolCard top tags display (D-19, D-21, D-22)
-- [ ] 04-04-PLAN.md — Tool submission: Submit API (POST with validation + dedup), Admin API (GET pending + PATCH approve/reject), SubmitForm, admin review page, auto-fetch on approval (D-11 to D-17)
-- [ ] 04-05-PLAN.md — Integration: Header LoginButton, i18n key finalization, end-to-end verification checkpoint (D-01, D-02, D-16, D-17)
+- [x] 04-01-PLAN.md — Auth foundation: Prisma schema (User/Account/ToolTagVote), Auth.js v5 GitHub OAuth, auth helpers, SessionProvider, LoginButton, tag presets (D-01 to D-04, D-10, D-18, D-20, D-23)
+- [x] 04-02-PLAN.md — Review system: Review API (GET list + POST upsert), RatingDistribution, ReviewForm, ReviewList, StarRating interactive mode, ReviewSection expansion (D-05 to D-09)
+- [x] 04-03-PLAN.md — Tag voting: Tag API (GET counts + POST vote/unvote toggle), TagVoting component with framer-motion, ToolCard top tags display (D-19, D-21, D-22)
+- [x] 04-04-PLAN.md — Tool submission: Submit API (POST with validation + dedup), Admin API (GET pending + PATCH approve/reject), SubmitForm, admin review page, auto-fetch on approval (D-11 to D-17)
+- [x] 04-05-PLAN.md — Integration: Header LoginButton, i18n key finalization, end-to-end verification checkpoint (D-01, D-02, D-16, D-17)
 
 **Scope:**
 - GitHub OAuth authentication via Auth.js v5 (JWT session, PrismaAdapter)
