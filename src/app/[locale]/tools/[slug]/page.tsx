@@ -4,7 +4,7 @@ import { TOOLS } from "@/lib/mock-data";
 import type { Tool } from "@/types";
 import ToolDetailClient from "./ToolDetailClient";
 
-const API_BASE = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_APP_URL || "";
 
 interface PageProps {
   params: Promise<{ slug: string }>;

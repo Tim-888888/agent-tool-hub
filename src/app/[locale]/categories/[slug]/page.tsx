@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { CATEGORIES } from '@/lib/mock-data';
 import CategoryDetailClient from './CategoryDetailClient';
 
-const API_BASE = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+const API_BASE = process.env.NEXT_PUBLIC_APP_URL || '';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
