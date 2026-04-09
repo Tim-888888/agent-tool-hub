@@ -57,7 +57,7 @@ Exceptions:
 | Body | 14px (text-sm) | 400 (normal) | 1.5 (default) | Review content, tag labels, form helper text |
 | Label | 14px (text-sm) | 600 (semibold) | 1.25 | Form labels, section headings in sidebar, rating numbers |
 | Heading | 20px (text-xl) | 600 (semibold) | 1.2 | Section headings ("Reviews", "Tags", "Submit a Tool") |
-| Display | 28px-36px (text-3xl to text-4xl) | 700 (bold) | 1.1 | Page title ("Submit a Tool"), hero rating number |
+| Display | 28px-36px (text-3xl to text-4xl) | 600 (semibold) | 1.1 | Page title ("Submit a Tool"), hero rating number |
 
 Font sizes match existing codebase: text-xs (12px), text-sm (14px), text-lg (18px), text-xl (20px), text-2xl (24px), text-3xl (28px), text-4xl (36px).
 
