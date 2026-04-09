@@ -52,6 +52,7 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/api/') ||
     pathname.startsWith('/_next/') ||
     pathname.startsWith('/_vercel') ||
+    pathname.startsWith('/admin') ||
     pathname.includes('.')
   ) {
     return;

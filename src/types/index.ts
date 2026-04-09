@@ -39,7 +39,7 @@ export interface Tool {
   featuresEn: string[];
   featuresZh: string[];
   tags: string[];
-  installGuide?: string;
+  installGuide?: string | Record<string, unknown>;
   categories: Category[];
   platforms: Platform[];
   topTags?: { tagSlug: string; count: number }[];
