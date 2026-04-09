@@ -67,7 +67,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Proxy + dictionaries + [locale] page restructuring + Header locale switcher (D-01, D-02, D-03, D-04, D-05, D-06, D-12)
+- [x] 03-01-PLAN.md — Proxy + dictionaries + [locale] page restructuring + Header locale switcher (D-01, D-02, D-03, D-04, D-05, D-06, D-12)
 - [ ] 03-02-PLAN.md — Dynamic generateMetadata + bilingual content + enhanced JSON-LD (D-07, D-08, D-09)
 - [ ] 03-03-PLAN.md — Dynamic sitemap.ts + robots.ts with locale alternates (D-10, D-11)
 
@@ -84,12 +84,30 @@ Plans:
 
 ---
 
-## Phase 4: Community Features (Future)
+## Phase 4: Community Features
 
-**Goal:** User reviews, ratings, and tool submissions with real backend.
+**Goal:** User reviews, ratings, and tool submissions with real backend — GitHub OAuth auth, review system, tag voting, tool submission with admin review workflow.
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Auth foundation: Prisma schema (User/Account/ToolTagVote), Auth.js v5 GitHub OAuth, auth helpers, SessionProvider, LoginButton, tag presets (D-01 to D-04, D-10, D-18, D-20, D-23)
+- [ ] 04-02-PLAN.md — Review system: Review API (GET list + POST upsert), RatingDistribution, ReviewForm, ReviewList, StarRating interactive mode, ReviewSection expansion (D-05 to D-09)
+- [ ] 04-03-PLAN.md — Tag voting: Tag API (GET counts + POST vote/unvote toggle), TagVoting component with framer-motion, ToolCard top tags display (D-19, D-21, D-22)
+- [ ] 04-04-PLAN.md — Tool submission: Submit API (POST with validation + dedup), Admin API (GET pending + PATCH approve/reject), SubmitForm, admin review page, auto-fetch on approval (D-11 to D-17)
+- [ ] 04-05-PLAN.md — Integration: Header LoginButton, i18n key finalization, end-to-end verification checkpoint (D-01, D-02, D-16, D-17)
 
 **Scope:**
-- Review submission API
-- Tool submission review workflow
-- Tag voting system
+- GitHub OAuth authentication via Auth.js v5 (JWT session, PrismaAdapter)
+- User model with GitHub ID, username, avatar
+- Review submission with 1-5 star rating, upsert per user per tool
+- Real-time avgRating/ratingCount recalculation after review
+- Rating distribution bar chart + paginated review list
+- Tool submission with GitHub repo URL validation and dedup check
+- Admin review workflow: PENDING -> APPROVED/REJECTED
+- Auto-fetch GitHub data on approval (reuses Phase 2 sync logic)
+- Preset tag voting system (10 tags, bilingual, max 3 votes per user per tool)
+- Tag pills on tool detail page and ToolCard browse pages
+- LoginButton in header with session display
 
+**Out of scope:** Admin dashboard beyond submission review, email/notification system, automated tool discovery, delete review UI, rate limiting middleware
