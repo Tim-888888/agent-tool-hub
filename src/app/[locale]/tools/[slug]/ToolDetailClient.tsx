@@ -12,7 +12,7 @@ import AgentInstallSection from '@/components/tools/AgentInstallSection';
 import ReviewSection from '@/components/tools/ReviewSection';
 import TagVoting from '@/components/tools/TagVoting';
 import { formatStars, formatDate, getToolTypeColor } from '@/lib/utils';
-import { useI18n } from '@/lib/i18n-context';
+import { useI18n, localePath } from '@/lib/i18n-context';
 import type { Tool } from '@/types';
 
 interface Props {
@@ -35,13 +35,13 @@ export default function ToolDetailClient({ tool }: Props) {
           <div className="mx-auto max-w-6xl px-4 py-3 sm:px-6 lg:px-8">
             <ol className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
               <li>
-                <Link href="/" className="transition-colors hover:text-[var(--text-primary)]">
+                <Link href={localePath(locale, '/')} className="transition-colors hover:text-[var(--text-primary)]">
                   {t('nav.home')}
                 </Link>
               </li>
               <li aria-hidden="true">/</li>
               <li>
-                <Link href="/tools" className="transition-colors hover:text-[var(--text-primary)]">
+                <Link href={localePath(locale, '/tools')} className="transition-colors hover:text-[var(--text-primary)]">
                   {t('nav.tools')}
                 </Link>
               </li>

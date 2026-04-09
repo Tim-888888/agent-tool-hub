@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Tool } from '@/types';
 import { useI18n } from '@/lib/i18n-context';
 import { getTagLabel } from '@/lib/tag-presets';
+import { localePath } from '@/lib/i18n-context';
 
 interface ToolCardProps {
   tool: Tool;
@@ -14,7 +15,7 @@ export default function ToolCard({ tool }: ToolCardProps) {
 
   return (
     <Link
-      href={`/tools/${tool.slug}`}
+      href={localePath(locale, `/tools/${tool.slug}`)}
       className="group flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] p-5 transition-all hover:border-[var(--color-accent)]/30 hover:shadow-[var(--shadow-md)]"
     >
       <div className="flex items-center gap-2">

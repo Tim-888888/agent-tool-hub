@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useI18n } from '@/lib/i18n-context';
+import { useI18n, localePath } from '@/lib/i18n-context';
 import type { Category } from '@/types';
 
 interface CategoryGridProps {
@@ -22,7 +22,7 @@ export default function CategoryGrid({ categories, toolCounts }: CategoryGridPro
           {categories.map((cat) => (
             <Link
               key={cat.id}
-              href={`/categories/${cat.slug}`}
+              href={localePath(locale, `/categories/${cat.slug}`)}
               className="rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] p-4 transition-all hover:border-[var(--color-accent)]/30 hover:shadow-[var(--shadow-md)]"
             >
               <h3 className="font-semibold text-[var(--text-primary)]">

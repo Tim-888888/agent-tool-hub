@@ -13,6 +13,11 @@ const dictionaries: Record<Locale, Dictionary> = {
   zh: zhDict,
 };
 
+/** Prepend locale prefix to a path for internal links */
+export function localePath(locale: Locale, path: string): string {
+  return `/${locale}${path}`;
+}
+
 interface I18nContextValue {
   locale: Locale;
   dict: Dictionary;

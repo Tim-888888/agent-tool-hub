@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import ToolCard from '@/components/tools/ToolCard';
-import { useI18n } from '@/lib/i18n-context';
+import { useI18n, localePath } from '@/lib/i18n-context';
 import type { Category, Tool } from '@/types';
 
 interface CategoryDetailClientProps {
@@ -25,7 +25,7 @@ export default function CategoryDetailClient({ category, tools }: CategoryDetail
             <nav aria-label="Breadcrumb" className="mb-4 text-sm text-[var(--text-secondary)]">
               <ol className="flex items-center gap-2">
                 <li>
-                  <Link href="/" className="hover:text-[var(--text-primary)]">
+                  <Link href={localePath(locale, '/')} className="hover:text-[var(--text-primary)]">
                     {t('nav.home')}
                   </Link>
                 </li>

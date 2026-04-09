@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { formatStars } from "@/lib/utils";
-import { useI18n } from "@/lib/i18n-context";
+import { useI18n, localePath } from "@/lib/i18n-context";
 import type { Tool } from "@/types";
 
 type TabValue = "overall" | "weekly" | "newest";
@@ -129,7 +129,7 @@ export default function RankingsPage() {
                   return (
                     <a
                       key={tool.id}
-                      href={`/tools/${tool.slug}`}
+                      href={localePath(locale, `/tools/${tool.slug}`)}
                       className="group flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--bg-primary)] p-4 transition-all hover:border-[var(--color-accent)]/30 hover:shadow-[var(--shadow-md)] sm:p-5"
                     >
                       {/* Rank Badge */}
