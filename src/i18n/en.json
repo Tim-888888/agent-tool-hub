@@ -56,5 +56,23 @@
   "footer": {
     "description": "Discover the best tools for your AI coding agents",
     "builtWith": "Built with Next.js and Prisma"
+  },
+  "community": {
+    "reviews": "Reviews",
+    "writeReview": "Write a Review",
+    "updateReview": "Update Review",
+    "noReviews": "No reviews yet",
+    "noReviewsBody": "Be the first to share your experience with this tool.",
+    "signInToReview": "Sign in with GitHub to write a review",
+    "reviewSubmitted": "Review submitted",
+    "reviewUpdated": "Review updated",
+    "reviewError": "Failed to submit review. Please try again.",
+    "content": "Content",
+    "contentPlaceholder": "Share your experience...",
+    "platform": "Platform",
+    "useCase": "Use case",
+    "useCasePlaceholder": "How do you use this tool?",
+    "reviewsCount": "reviews",
+    "loadMore": "Load More"
   }
 }
