@@ -73,6 +73,19 @@
     "useCase": "Use case",
     "useCasePlaceholder": "How do you use this tool?",
     "reviewsCount": "reviews",
-    "loadMore": "Load More"
+    "loadMore": "Load More",
+    "submitTitle": "Submit a Tool",
+    "submitDescription": "Share a tool with the community",
+    "submitConfirmation": "Thank you! Your submission is pending review.",
+    "submitValidation": "Please enter a valid GitHub repository URL",
+    "submitDuplicate": "This repository has already been submitted or exists in our database",
+    "submitNotFound": "Could not verify this repository. Please check the URL.",
+    "signInToSubmit": "Sign in to submit a tool",
+    "notes": "Notes (optional)",
+    "notesPlaceholder": "Anything you'd like to share about this tool...",
+    "suggestedTags": "Suggested Tags (optional)",
+    "repoUrl": "GitHub Repository URL",
+    "repoUrlPlaceholder": "https://github.com/user/repo",
+    "submitTool": "Submit Tool"
   }
 }

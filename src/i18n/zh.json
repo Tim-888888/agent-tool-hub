@@ -73,6 +73,19 @@
     "useCase": "使用场景",
     "useCasePlaceholder": "你如何使用这个工具？",
     "reviewsCount": "评价",
-    "loadMore": "加载更多"
+    "loadMore": "加载更多",
+    "submitTitle": "提交工具",
+    "submitDescription": "与社区分享工具",
+    "submitConfirmation": "感谢提交！你的工具正在等待审核。",
+    "submitValidation": "请输入有效的 GitHub 仓库链接",
+    "submitDuplicate": "该仓库已被提交或已存在于数据库中",
+    "submitNotFound": "无法验证该仓库，请检查链接。",
+    "signInToSubmit": "登录后提交工具",
+    "notes": "备注（可选）",
+    "notesPlaceholder": "关于这个工具你想分享的...",
+    "suggestedTags": "推荐标签（可选）",
+    "repoUrl": "GitHub 仓库链接",
+    "repoUrlPlaceholder": "https://github.com/user/repo",
+    "submitTool": "提交工具"
   }
 }
