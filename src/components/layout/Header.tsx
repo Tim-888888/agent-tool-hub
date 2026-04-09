@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useI18n } from '@/lib/i18n-context';
+import LoginButton from '@/components/auth/LoginButton';
 
 function getLocalePath(path: string, locale: string): string {
   return locale === 'en' ? path : `/zh${path}`;
@@ -49,6 +50,7 @@ export default function Header() {
           >
             {t('nav.about')}
           </Link>
+          <LoginButton />
           <button
             onClick={toggleLocale}
             className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
