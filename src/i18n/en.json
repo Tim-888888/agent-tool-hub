@@ -86,6 +86,10 @@
     "suggestedTags": "Suggested Tags (optional)",
     "repoUrl": "GitHub Repository URL",
     "repoUrlPlaceholder": "https://github.com/user/repo",
-    "submitTool": "Submit Tool"
+    "submitTool": "Submit Tool",
+    "tags": "Community Tags",
+    "signInToVote": "Sign in to vote",
+    "tagVoteLimit": "You can vote for up to 3 tags per tool",
+    "votedCount": "{count}/3 voted"
   }
 }

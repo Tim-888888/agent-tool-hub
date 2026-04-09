@@ -95,6 +95,9 @@ export function buildOrderBy(sortParam: string | null): PrismaOrderBy {
 export const TOOL_PRISMA_INCLUDE = {
   categories: { include: { category: true } },
   platforms: { include: { platform: true } },
+  tagVotes: {
+    select: { tagSlug: true },
+  },
 } as const;
 
 // --- Response Mapping ---
@@ -103,7 +106,19 @@ export const TOOL_PRISMA_INCLUDE = {
 export function mapToolResponse(tool: any): any {
   if (!tool) return null;
 
-  const { categories, platforms, score, syncedAt, npmDownloads, ...rest } = tool;
+  const { categories, platforms, score, syncedAt, npmDownloads, tagVotes, ...rest } = tool;
+
+  // Compute top 3 tags by vote count
+  const tagCountMap: Record<string, number> = {};
+  if (Array.isArray(tagVotes)) {
+    for (const vote of tagVotes) {
+      tagCountMap[vote.tagSlug] = (tagCountMap[vote.tagSlug] || 0) + 1;
+    }
+  }
+  const topTags = Object.entries(tagCountMap)
+    .map(([tagSlug, count]) => ({ tagSlug, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
 
   return {
     ...rest,
@@ -113,6 +128,7 @@ export function mapToolResponse(tool: any): any {
     platforms: Array.isArray(platforms)
       ? platforms.map((tp: { platform: unknown }) => tp.platform).filter(Boolean)
       : [],
+    topTags: topTags.length > 0 ? topTags : undefined,
   };
 }
 

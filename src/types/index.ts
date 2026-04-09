@@ -41,6 +41,7 @@ export interface Tool {
   installGuide?: string;
   categories: Category[];
   platforms: Platform[];
+  topTags?: { tagSlug: string; count: number }[];
 }
 
 export interface ToolFilters {

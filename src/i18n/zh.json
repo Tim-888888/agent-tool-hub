@@ -86,6 +86,10 @@
     "suggestedTags": "推荐标签（可选）",
     "repoUrl": "GitHub 仓库链接",
     "repoUrlPlaceholder": "https://github.com/user/repo",
-    "submitTool": "提交工具"
+    "submitTool": "提交工具",
+    "tags": "社区标签",
+    "signInToVote": "登录后投票",
+    "tagVoteLimit": "每个工具最多可投 3 个标签",
+    "votedCount": "已投 {count}/3"
   }
 }

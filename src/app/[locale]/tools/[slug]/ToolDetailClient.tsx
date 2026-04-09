@@ -10,6 +10,7 @@ import CompatibilityMatrix from '@/components/tools/CompatibilityMatrix';
 import InstallGuide from '@/components/tools/InstallGuide';
 import AgentInstallSection from '@/components/tools/AgentInstallSection';
 import ReviewSection from '@/components/tools/ReviewSection';
+import TagVoting from '@/components/tools/TagVoting';
 import { formatStars, formatDate, getToolTypeColor } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n-context';
 import type { Tool } from '@/types';
@@ -107,6 +108,11 @@ export default function ToolDetailClient({ tool }: Props) {
               {/* Reviews */}
               <section className="mt-8">
                 <ReviewSection tool={tool} />
+              </section>
+
+              {/* Community Tags */}
+              <section className="mt-8">
+                <TagVoting toolSlug={tool.slug} toolId={tool.id} />
               </section>
             </article>
 
