@@ -71,6 +71,7 @@ model Tool {
   platforms     ToolPlatform[]
   reviews       Review[]
   submissions   Submission[]
+  tagVotes      ToolTagVote[]
 
   @@index([type, status])
   @@index([stars])
@@ -123,23 +124,83 @@ model ToolPlatform {
   @@id([toolId, platformId])
 }
 
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  reviews       Review[]
+  submissions   Submission[]
+  tagVotes      ToolTagVote[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
 model Review {
   id          String   @id @default(cuid())
   toolId      String
   tool        Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   rating      Int
   content     String?
   platform    String?
   useCase     String?
   createdAt   DateTime @default(now())
 
+  @@unique([userId, toolId])
   @@index([toolId])
+  @@index([userId])
 }
 
 model Submission {
   id              String           @id @default(cuid())
   toolId          String?
   tool            Tool?            @relation(fields: [toolId], references: [id])
+  userId          String?
+  user            User?            @relation(fields: [userId], references: [id])
   repoUrl         String
   submitterName   String?
   submitterEmail  String?
@@ -150,4 +211,19 @@ model Submission {
   reviewedAt      DateTime?
 
   @@index([status])
+}
+
+model ToolTagVote {
+  id        String   @id @default(cuid())
+  toolId    String
+  tagSlug   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  tool  Tool  @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([toolId, tagSlug, userId])
+  @@index([toolId])
+  @@index([toolId, tagSlug])
 }
