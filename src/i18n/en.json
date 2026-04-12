@@ -52,7 +52,8 @@
     "searchResult": "Found {count} tool for \"{query}\"",
     "searchResult_plural": "Found {count} tools for \"{query}\"",
     "noTools": "No tools found",
-    "noToolsDesc": "Try adjusting your filters or search query."
+    "noToolsDesc": "Try adjusting your filters or search query.",
+    "searchPlaceholder": "Search tools..."
   },
   "category": {
     "toolsFound": "{count} tools in this category",

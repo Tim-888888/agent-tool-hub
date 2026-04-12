@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ToolFilters, Category } from '@/types';
 import { cn } from '@/lib/utils';
 import { PLATFORMS as ALL_PLATFORMS } from '@/lib/mock-data';
 import { useI18n } from '@/lib/i18n-context';
+import SearchInput from '@/components/ui/SearchInput';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface FilterBarProps {
   currentFilters: ToolFilters;
@@ -12,6 +14,7 @@ interface FilterBarProps {
 }
 
 const TYPE_VALUES = ['', 'mcp', 'skill', 'rule'] as const;
+const SEARCH_DEBOUNCE_MS = 300;
 
 export default function FilterBar({
   currentFilters,
@@ -19,6 +22,8 @@ export default function FilterBar({
 }: FilterBarProps) {
   const { locale, t } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [searchText, setSearchText] = useState(currentFilters.query ?? '');
+  const debouncedSearch = useDebounce(searchText, SEARCH_DEBOUNCE_MS);
 
   useEffect(() => {
     async function fetchCategories() {
@@ -35,6 +40,24 @@ export default function FilterBar({
     fetchCategories();
   }, []);
 
+  // Sync external query changes (e.g., URL param) back to local input
+  useEffect(() => {
+    if ((currentFilters.query ?? '') !== searchText) {
+      setSearchText(currentFilters.query ?? '');
+    }
+    // Only react to external query changes, not our own setSearchText
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFilters.query]);
+
+  // Debounce: push search text to parent after user stops typing
+  useEffect(() => {
+    const trimmed = debouncedSearch.trim();
+    if ((currentFilters.query ?? '') !== trimmed) {
+      onFilterChange({ ...currentFilters, query: trimmed || undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+
   const typeLabels: Record<string, string> = {
     '': t('filter.allTypes'),
     mcp: t('tool.type.mcp_server'),
@@ -44,6 +67,12 @@ export default function FilterBar({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
+      <SearchInput
+        value={searchText}
+        onChange={setSearchText}
+        placeholder={t('tools.searchPlaceholder')}
+        className="min-w-[200px]"
+      />
       <div className="flex items-center gap-1.5 rounded-xl bg-[var(--bg-secondary)] p-1 dark:bg-[var(--bg-tertiary)]">
         {TYPE_VALUES.map((value) => (
           <button

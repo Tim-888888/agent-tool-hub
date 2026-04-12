@@ -52,7 +52,8 @@
     "searchResult": "搜索 \"{query}\" 找到 {count} 个工具",
     "searchResult_plural": "搜索 \"{query}\" 找到 {count} 个工具",
     "noTools": "未找到工具",
-    "noToolsDesc": "尝试调整过滤条件或搜索关键词。"
+    "noToolsDesc": "尝试调整过滤条件或搜索关键词。",
+    "searchPlaceholder": "搜索工具..."
   },
   "category": {
     "toolsFound": "该分类下有 {count} 个工具",
