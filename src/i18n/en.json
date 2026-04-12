@@ -6,7 +6,8 @@
     "rankings": "Rankings",
     "submit": "Submit",
     "about": "About",
-    "search": "Search tools..."
+    "search": "Search tools...",
+    "admin": "Admin"
   },
   "hero": {
     "title": "Discover AI Agent Tools",
@@ -114,7 +115,9 @@
     "noSubmissions": "No pending submissions.",
     "rejectConfirm": "Reject this submission? The submitter will not be notified.",
     "by": "by",
-    "on": "on"
+    "on": "on",
+    "userSubmissions": "User Submissions ({count})",
+    "discoveredTools": "Auto-Discovered ({count})"
   },
   "community": {
     "reviews": "Reviews",

@@ -8,6 +8,7 @@ jest.mock("@/lib/db", () => ({
   prisma: {
     tool: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
       update: jest.fn(),
     },
   },
@@ -43,6 +44,7 @@ import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser";
 import { computeScore } from "@/lib/scoring";
 
 const mockFindMany = prisma.tool.findMany as jest.Mock;
+const mockFindUnique = prisma.tool.findUnique as jest.Mock;
 const mockUpdate = prisma.tool.update as jest.Mock;
 const mockParseRepoUrl = parseRepoUrl as jest.Mock;
 const mockFetchRepoData = fetchRepoData as jest.Mock;
@@ -53,6 +55,8 @@ const mockExtractInstallGuide = extractInstallGuide as jest.Mock;
 const mockComputeScore = computeScore as jest.Mock;
 
 describe("GET /api/sync", () => {
+  const mockRequest = new Request("http://localhost:3000/api/sync");
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -83,9 +87,15 @@ describe("GET /api/sync", () => {
     mockExtractFeatures.mockReturnValue(["Fast"]);
     mockExtractInstallGuide.mockReturnValue("npm install test-package");
     mockComputeScore.mockReturnValue(75.3);
+    // Existing tool has structured installGuide and featuresEn
+    mockFindUnique.mockResolvedValue({
+      installGuide: { "claude-code": { method: "cli", command: "test" } },
+      featuresEn: ["Existing feature"],
+      featuresZh: ["已有特性"],
+    });
     mockUpdate.mockResolvedValue({});
 
-    const response = await GET();
+    const response = await GET(mockRequest);
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -109,6 +119,12 @@ describe("GET /api/sync", () => {
         syncedAt: expect.any(Date),
       }),
     });
+
+    // Verify installGuide was NOT overwritten (existing is non-null)
+    const updateData = mockUpdate.mock.calls[0][0].data;
+    expect(updateData.installGuide).toBeUndefined();
+    // Verify featuresEn was NOT overwritten (existing is non-empty)
+    expect(updateData.featuresEn).toBeUndefined();
   });
 
   it("handles tool with invalid repoUrl", async () => {
@@ -123,7 +139,7 @@ describe("GET /api/sync", () => {
 
     mockParseRepoUrl.mockReturnValue(null);
 
-    const response = await GET();
+    const response = await GET(mockRequest);
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -159,9 +175,14 @@ describe("GET /api/sync", () => {
     mockExtractFeatures.mockReturnValue([]);
     mockExtractInstallGuide.mockReturnValue(null);
     mockComputeScore.mockReturnValue(20.0);
+    mockFindUnique.mockResolvedValue({
+      installGuide: null,
+      featuresEn: [],
+      featuresZh: [],
+    });
     mockUpdate.mockResolvedValue({});
 
-    const response = await GET();
+    const response = await GET(mockRequest);
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -214,9 +235,14 @@ describe("GET /api/sync", () => {
     mockExtractFeatures.mockReturnValue([]);
     mockExtractInstallGuide.mockReturnValue(null);
     mockComputeScore.mockReturnValue(15.0);
+    mockFindUnique.mockResolvedValue({
+      installGuide: null,
+      featuresEn: [],
+      featuresZh: [],
+    });
     mockUpdate.mockResolvedValue({});
 
-    const response = await GET();
+    const response = await GET(mockRequest);
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -243,7 +269,7 @@ describe("GET /api/sync", () => {
   it("handles empty tools list", async () => {
     mockFindMany.mockResolvedValue([]);
 
-    const response = await GET();
+    const response = await GET(mockRequest);
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -257,11 +283,148 @@ describe("GET /api/sync", () => {
   it("returns 500 on fatal database error", async () => {
     mockFindMany.mockRejectedValue(new Error("DB connection failed"));
 
-    const response = await GET();
+    const response = await GET(mockRequest);
     const body = await response.json();
 
     expect(response.status).toBe(500);
     expect(body.success).toBe(false);
     expect(body.error).toBe("Sync failed");
+  });
+
+  it("does NOT overwrite existing structured installGuide", async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        id: "tool-1",
+        name: "Protected Tool",
+        repoUrl: "https://github.com/owner/repo",
+        npmPackage: null,
+      },
+    ]);
+
+    mockParseRepoUrl.mockReturnValue({ owner: "owner", repo: "repo" });
+    mockFetchRepoData.mockResolvedValue({
+      stargazers_count: 100,
+      forks_count: 10,
+      open_issues_count: 5,
+      pushed_at: "2026-04-01T00:00:00Z",
+      description: "Protected tool",
+      topics: [],
+      license: null,
+      language: "TypeScript",
+    });
+    mockFetchReadme.mockResolvedValue("# Install\nnpm install foo");
+    mockExtractFeatures.mockReturnValue([]);
+    mockExtractInstallGuide.mockReturnValue("npm install foo");
+    mockComputeScore.mockReturnValue(30.0);
+
+    // Existing tool has structured installGuide
+    mockFindUnique.mockResolvedValue({
+      installGuide: {
+        "claude-code": { method: "cli", command: "claude mcp add foo" },
+        cursor: { method: "config", config: { mcpServers: { foo: {} } } },
+      },
+      featuresEn: ["Feature 1"],
+      featuresZh: ["特性 1"],
+    });
+    mockUpdate.mockResolvedValue({});
+
+    const response = await GET(mockRequest);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.synced).toBe(1);
+
+    // installGuide should NOT be in the update payload
+    const updateData = mockUpdate.mock.calls[0][0].data;
+    expect(updateData.installGuide).toBeUndefined();
+    // featuresZh should never appear in update
+    expect(updateData.featuresZh).toBeUndefined();
+  });
+
+  it("sets installGuide from README only when existing is null", async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        id: "tool-2",
+        name: "New Tool",
+        repoUrl: "https://github.com/owner/new-repo",
+        npmPackage: null,
+      },
+    ]);
+
+    mockParseRepoUrl.mockReturnValue({ owner: "owner", repo: "new-repo" });
+    mockFetchRepoData.mockResolvedValue({
+      stargazers_count: 200,
+      forks_count: 15,
+      open_issues_count: 3,
+      pushed_at: "2026-04-01T00:00:00Z",
+      description: "New tool",
+      topics: [],
+      license: null,
+      language: "Python",
+    });
+    mockFetchReadme.mockResolvedValue("# Install\npip install foo");
+    mockExtractFeatures.mockReturnValue([]);
+    mockExtractInstallGuide.mockReturnValue("pip install foo");
+    mockComputeScore.mockReturnValue(25.0);
+
+    // No existing installGuide
+    mockFindUnique.mockResolvedValue({
+      installGuide: null,
+      featuresEn: [],
+      featuresZh: [],
+    });
+    mockUpdate.mockResolvedValue({});
+
+    const response = await GET(mockRequest);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.synced).toBe(1);
+
+    // installGuide SHOULD be set when existing is null
+    const updateData = mockUpdate.mock.calls[0][0].data;
+    expect(updateData.installGuide).toEqual({ markdown: "pip install foo" });
+  });
+
+  it("sets featuresEn from README only when existing is empty", async () => {
+    mockFindMany.mockResolvedValue([
+      {
+        id: "tool-3",
+        name: "Empty Features Tool",
+        repoUrl: "https://github.com/owner/empty-feat",
+        npmPackage: null,
+      },
+    ]);
+
+    mockParseRepoUrl.mockReturnValue({ owner: "owner", repo: "empty-feat" });
+    mockFetchRepoData.mockResolvedValue({
+      stargazers_count: 50,
+      forks_count: 5,
+      open_issues_count: 2,
+      pushed_at: "2026-04-01T00:00:00Z",
+      description: "Empty features",
+      topics: [],
+      license: null,
+      language: "Rust",
+    });
+    mockFetchReadme.mockResolvedValue("# Features\n- Fast\n- Safe");
+    mockExtractFeatures.mockReturnValue(["Fast", "Safe"]);
+    mockExtractInstallGuide.mockReturnValue(null);
+    mockComputeScore.mockReturnValue(18.0);
+
+    // Existing has empty featuresEn
+    mockFindUnique.mockResolvedValue({
+      installGuide: null,
+      featuresEn: [],
+      featuresZh: [],
+    });
+    mockUpdate.mockResolvedValue({});
+
+    const response = await GET(mockRequest);
+    expect(response.status).toBe(200);
+
+    // featuresEn SHOULD be set when existing is empty
+    const updateData = mockUpdate.mock.calls[0][0].data;
+    expect(updateData.featuresEn).toEqual(["Fast", "Safe"]);
   });
 });

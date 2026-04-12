@@ -6,7 +6,8 @@
     "rankings": "排行",
     "submit": "提交",
     "about": "关于",
-    "search": "搜索工具..."
+    "search": "搜索工具...",
+    "admin": "管理"
   },
   "hero": {
     "title": "发现 AI Agent 工具",
@@ -114,7 +115,9 @@
     "noSubmissions": "暂无待审核的提交。",
     "rejectConfirm": "确定拒绝此提交？提交者不会收到通知。",
     "by": "由",
-    "on": "于"
+    "on": "于",
+    "userSubmissions": "用户提交（{count}）",
+    "discoveredTools": "自动发现（{count}）"
   },
   "community": {
     "reviews": "评价",

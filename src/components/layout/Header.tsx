@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useI18n } from '@/lib/i18n-context';
 import LoginButton from '@/components/auth/LoginButton';
 
@@ -9,9 +10,20 @@ function getLocalePath(path: string, locale: string): string {
   return `/${locale}${path}`;
 }
 
+// Must match server-side ADMIN_GITHUB_IDS in auth-helpers.ts
+const ADMIN_GITHUB_IDS = (typeof window !== 'undefined'
+  ? (window as unknown as { __ADMIN_IDS?: string }).__ADMIN_IDS
+  : '') ?? '';
+
 export default function Header() {
   const { locale, t } = useI18n();
   const pathname = usePathname();
+  const { data: session } = useSession();
+
+  // Check if current user is admin
+  const isAdmin = session?.user?.id
+    ? (process.env.NEXT_PUBLIC_ADMIN_GITHUB_IDS ?? '').split(',').includes(session.user.id)
+    : false;
 
   // Strip current locale prefix to get the base path
   const basePath = pathname.replace(/^\/(en|zh)/, '') || '/';
@@ -52,6 +64,14 @@ export default function Header() {
           >
             {t('nav.about')}
           </Link>
+          {isAdmin && (
+            <Link
+              href="/admin/submissions"
+              className="rounded-lg bg-[var(--color-accent)]/10 px-3 py-1 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20"
+            >
+              {t('nav.admin')}
+            </Link>
+          )}
           <LoginButton />
           <button
             onClick={toggleLocale}

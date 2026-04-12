@@ -17,19 +17,45 @@ export default async function AdminSubmissionsPage() {
     redirect("/")
   }
 
-  // Server-side data fetch
+  // Fetch user submissions (PENDING)
   const submissions = await prisma.submission.findMany({
     where: { status: "PENDING" },
     include: { user: { select: { name: true, image: true } } },
     orderBy: { createdAt: "desc" },
   })
 
+  // Fetch auto-discovered tools (PENDING status)
+  const discoveredTools = await prisma.tool.findMany({
+    where: { status: "PENDING" },
+    select: {
+      id: true,
+      name: true,
+      repoUrl: true,
+      description: true,
+      stars: true,
+      language: true,
+      type: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+  })
+
   // Serialize dates for client component
-  const serialized = submissions.map((sub) => ({
+  const serializedSubmissions = submissions.map((sub) => ({
     ...sub,
     createdAt: sub.createdAt.toISOString(),
     reviewedAt: sub.reviewedAt?.toISOString() ?? null,
   }))
 
-  return <AdminSubmissionsClient initialSubmissions={serialized} />
+  const serializedDiscovered = discoveredTools.map((tool) => ({
+    ...tool,
+    createdAt: tool.createdAt.toISOString(),
+  }))
+
+  return (
+    <AdminSubmissionsClient
+      initialSubmissions={serializedSubmissions}
+      initialDiscoveredTools={serializedDiscovered}
+    />
+  )
 }

@@ -107,26 +107,45 @@ export async function GET(request: Request) {
           npmDownloads,
         });
 
-        // Update tool record per D-08, D-15
+        // Update tool record — only fields that sync actually fetches.
+        // Do NOT overwrite hand-crafted structured data (installGuide, featuresZh).
+        const existing = await prisma.tool.findUnique({
+          where: { id: tool.id },
+          select: { installGuide: true, featuresEn: true, featuresZh: true },
+        });
+
+        // Build update payload: only sync-enriched fields
+        const updateData: Record<string, unknown> = {
+          stars: repoData.stargazers_count,
+          forks: repoData.forks_count,
+          openIssues: repoData.open_issues_count,
+          lastCommitAt: new Date(repoData.pushed_at),
+          language: repoData.language,
+          license: repoData.license?.key ?? null,
+          npmDownloads: npmDownloads ?? undefined,
+          score,
+          syncedAt: new Date(),
+        };
+
+        // Only update description if GitHub has one
+        if (repoData.description) {
+          updateData.description = repoData.description;
+        }
+
+        // Only update featuresEn if sync extracted new ones AND existing is empty
+        if (features.length > 0 && existing && (!existing.featuresEn || existing.featuresEn.length === 0)) {
+          updateData.featuresEn = features;
+        }
+
+        // Only set installGuide from README if existing is null/empty
+        // (protect hand-crafted structured install guides)
+        if (installGuide && existing && !existing.installGuide) {
+          updateData.installGuide = { markdown: installGuide };
+        }
+
         await prisma.tool.update({
           where: { id: tool.id },
-          data: {
-            stars: repoData.stargazers_count,
-            forks: repoData.forks_count,
-            openIssues: repoData.open_issues_count,
-            lastCommitAt: new Date(repoData.pushed_at),
-            language: repoData.language,
-            license: repoData.license?.key ?? null,
-            description: repoData.description ?? undefined,
-            featuresEn:
-              features.length > 0 ? features : undefined,
-            installGuide: installGuide
-              ? { markdown: installGuide }
-              : undefined,
-            npmDownloads: npmDownloads ?? undefined,
-            score,
-            syncedAt: new Date(),
-          },
+          data: updateData,
         });
 
         results.push({ tool: tool.name, status: "success" });
