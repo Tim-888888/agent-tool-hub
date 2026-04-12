@@ -140,17 +140,14 @@ export async function runDiscovery(): Promise<DiscoveryResult[]> {
 
   const knownUrls = new Set([...existingUrls, ...pendingUrls]);
 
-  // Define search queries covering MCP ecosystem
+  // Define search queries covering MCP ecosystem (kept minimal to avoid timeout)
   const githubQueries = [
-    "topic:mcp-server",
-    "topic:mcp server",
-    "mcp server language:typescript stars:>50",
-    "mcp server language:python stars:>50",
+    "topic:mcp-server stars:>20",
+    "mcp server language:typescript stars:>100",
     "claude code skill stars:>20",
-    "claude mcp server stars:>50",
   ];
 
-  const npmKeywords = ["mcp server", "mcp-server", "@modelcontextprotocol"];
+  const npmKeywords = ["mcp-server", "@modelcontextprotocol"];
 
   // --- GitHub discovery ---
   const allGitHubRepos: DiscoveredRepo[] = [];
@@ -158,7 +155,7 @@ export async function runDiscovery(): Promise<DiscoveryResult[]> {
 
   for (const query of githubQueries) {
     try {
-      const repos = await withRetry(() => searchGitHubTopics(query, 30));
+      const repos = await withRetry(() => searchGitHubTopics(query, 15));
       allGitHubRepos.push(...repos);
     } catch (error) {
       gitHubErrors.push(
@@ -264,7 +261,7 @@ export async function runDiscovery(): Promise<DiscoveryResult[]> {
 
   for (const keyword of npmKeywords) {
     try {
-      const repos = await searchNpmPackages(keyword, 30);
+      const repos = await searchNpmPackages(keyword, 15);
       allNpmRepos.push(...repos);
     } catch (error) {
       npmErrors.push(

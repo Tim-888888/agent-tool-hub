@@ -93,7 +93,13 @@ export default function AdminSubmissionsClient({
     setActionLoading(action)
     setActionResult(null)
     try {
-      const res = await fetch(`/api/${action}`, { method: "POST" })
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 90000)
+      const res = await fetch(`/api/${action}`, {
+        method: "POST",
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
       const json = await res.json()
       if (res.ok && json.success) {
         if (action === "discover" && json.data?.totalCreated > 0) {

@@ -8,5 +8,13 @@
       "path": "/api/discover",
       "schedule": "0 3 * * 1"
     }
-  ]
+  ],
+  "functions": {
+    "api/discover/*.ts": {
+      "maxDuration": 60
+    },
+    "api/sync/*.ts": {
+      "maxDuration": 60
+    }
+  }
 }
