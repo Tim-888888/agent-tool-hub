@@ -10,10 +10,10 @@
     }
   ],
   "functions": {
-    "api/discover/*.ts": {
+    "src/app/api/discover/route.ts": {
       "maxDuration": 60
     },
-    "api/sync/*.ts": {
+    "src/app/api/sync/route.ts": {
       "maxDuration": 60
     }
   }
