@@ -45,6 +45,8 @@ export default function AdminSubmissionsClient({
   )
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<"sync" | "discover" | null>(null)
+  const [actionResult, setActionResult] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const { locale, t } = useI18n()
 
   async function handleSubmissionAction(
@@ -87,6 +89,37 @@ export default function AdminSubmissionsClient({
     }
   }
 
+  async function handleTriggerAction(action: "sync" | "discover") {
+    setActionLoading(action)
+    setActionResult(null)
+    try {
+      const res = await fetch(`/api/${action}`, { method: "POST" })
+      const json = await res.json()
+      if (res.ok && json.success) {
+        if (action === "discover" && json.data?.totalCreated > 0) {
+          // Refresh discovered tools list
+          window.location.reload()
+        }
+        setActionResult({
+          type: "success",
+          message:
+            action === "sync"
+              ? `Synced ${json.data?.synced ?? 0} tools (${json.data?.failed ?? 0} failed)`
+              : `Discovered ${json.data?.totalDiscovered ?? 0} repos, created ${json.data?.totalCreated ?? 0} new tools`,
+        })
+      } else {
+        setActionResult({
+          type: "error",
+          message: json.error ?? "Action failed",
+        })
+      }
+    } catch {
+      setActionResult({ type: "error", message: "Network error" })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-bold text-[var(--text-primary)]">
@@ -95,6 +128,35 @@ export default function AdminSubmissionsClient({
           String(submissions.length + discoveredTools.length),
         )}
       </h1>
+
+      {/* Manual trigger actions */}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          onClick={() => handleTriggerAction("sync")}
+          disabled={actionLoading !== null}
+          className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+        >
+          {actionLoading === "sync" ? "..." : locale === "zh" ? "立即同步数据" : "Sync Now"}
+        </button>
+        <button
+          onClick={() => handleTriggerAction("discover")}
+          disabled={actionLoading !== null}
+          className="rounded-lg border border-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 disabled:opacity-50"
+        >
+          {actionLoading === "discover" ? "..." : locale === "zh" ? "发现新工具" : "Discover New Tools"}
+        </button>
+        {actionResult && (
+          <span
+            className={`text-sm font-medium ${
+              actionResult.type === "success"
+                ? "text-green-600 dark:text-green-400"
+                : "text-[var(--color-danger)]"
+            }`}
+          >
+            {actionResult.message}
+          </span>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="mt-6 flex gap-2 border-b border-[var(--border)]">

@@ -5,6 +5,7 @@ import { fetchWeeklyDownloads } from "@/lib/npm-client";
 import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser";
 import { withRetry } from "@/lib/retry";
 import { computeScore } from "@/lib/scoring";
+import { requireAuth, isAdmin } from "@/lib/auth-helpers";
 import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -176,6 +177,120 @@ export async function GET(request: Request) {
     );
 
     // Trigger on-demand revalidation so ISR pages pick up fresh data immediately
+    revalidatePath("/", "layout");
+
+    return successResponse({ results, synced, failed, durationMs });
+  } catch (error) {
+    console.error("Sync fatal error:", error);
+    return errorResponse("Sync failed", 500);
+  }
+}
+
+/**
+ * POST /api/sync — admin manual trigger
+ * Requires authenticated admin session.
+ */
+export async function POST() {
+  const { session, error } = await requireAuth();
+  if (error) return error;
+
+  const userId = session!.user!.id as string;
+  if (!isAdmin(userId)) {
+    return errorResponse("Forbidden", 403);
+  }
+
+  // Reuse GET handler logic via internal redirect
+  const startTime = Date.now();
+
+  try {
+    const tools = await prisma.tool.findMany({
+      where: { status: { in: ["ACTIVE", "FEATURED"] } },
+      select: { id: true, name: true, repoUrl: true, npmPackage: true },
+    });
+
+    const results: SyncResult[] = [];
+
+    for (const tool of tools) {
+      try {
+        const parsed = parseRepoUrl(tool.repoUrl);
+        if (!parsed) {
+          results.push({ tool: tool.name, status: "failed", error: `Invalid repo URL: ${tool.repoUrl}` });
+          continue;
+        }
+
+        const { owner, repo } = parsed;
+
+        const [repoResult, readmeResult, downloadsResult] = await Promise.allSettled([
+          withRetry(() => fetchRepoData(owner, repo)),
+          withRetry(() => fetchReadme(owner, repo)),
+          tool.npmPackage
+            ? withRetry(() => fetchWeeklyDownloads(tool.npmPackage!))
+            : Promise.resolve(null as number | null),
+        ]);
+
+        const repoData = repoResult.status === "fulfilled" ? repoResult.value : null;
+        const readmeContent = readmeResult.status === "fulfilled" ? readmeResult.value : null;
+        const npmDownloads =
+          downloadsResult.status === "fulfilled" ? (downloadsResult.value as number | null) : null;
+
+        if (!repoData) {
+          const repoError = repoResult.status === "rejected" ? String(repoResult.reason) : "No repo data";
+          results.push({ tool: tool.name, status: "failed", error: repoError });
+          continue;
+        }
+
+        const features = readmeContent ? extractFeatures(readmeContent) : [];
+        const installGuide = readmeContent ? extractInstallGuide(readmeContent) : null;
+
+        const score = computeScore({
+          stars: repoData.stargazers_count,
+          forks: repoData.forks_count,
+          lastCommitAt: new Date(repoData.pushed_at),
+          npmDownloads,
+        });
+
+        const existing = await prisma.tool.findUnique({
+          where: { id: tool.id },
+          select: { installGuide: true, featuresEn: true, featuresZh: true },
+        });
+
+        const updateData: Record<string, unknown> = {
+          stars: repoData.stargazers_count,
+          forks: repoData.forks_count,
+          openIssues: repoData.open_issues_count,
+          lastCommitAt: new Date(repoData.pushed_at),
+          language: repoData.language,
+          license: repoData.license?.key ?? null,
+          npmDownloads: npmDownloads ?? undefined,
+          score,
+          syncedAt: new Date(),
+        };
+
+        if (repoData.description) updateData.description = repoData.description;
+        if (features.length > 0 && existing && (!existing.featuresEn || existing.featuresEn.length === 0)) {
+          updateData.featuresEn = features;
+        }
+        if (installGuide && existing && !existing.installGuide) {
+          updateData.installGuide = { markdown: installGuide };
+        }
+
+        await prisma.tool.update({ where: { id: tool.id }, data: updateData });
+        results.push({ tool: tool.name, status: "success" });
+      } catch (error) {
+        results.push({
+          tool: tool.name,
+          status: "failed",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    const synced = results.filter((r) => r.status === "success").length;
+    const failed = results.filter((r) => r.status === "failed").length;
+    const durationMs = Date.now() - startTime;
+
+    console.log(JSON.stringify({ event: "sync_complete", trigger: "manual", synced, failed, durationMs }));
+
     revalidatePath("/", "layout");
 
     return successResponse({ results, synced, failed, durationMs });
