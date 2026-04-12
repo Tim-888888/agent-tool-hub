@@ -7,7 +7,7 @@ import {
 } from "@/lib/api-utils";
 import { withRetry } from "@/lib/retry";
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export async function GET() {
   try {

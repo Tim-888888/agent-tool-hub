@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { withRetry } from "@/lib/retry";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 export async function GET() {
   try {
