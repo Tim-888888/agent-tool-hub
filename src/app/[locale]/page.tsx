@@ -12,6 +12,16 @@ import type { Tool, Category } from "@/types";
 
 const PLATFORM_COUNT = 7;
 
+async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
+  for (let i = 0; i <= retries; i++) {
+    const res = await fetch(url);
+    if (res.ok) return res;
+    if (i === retries) return res;
+    await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+  }
+  return new Response(null, { status: 500 });
+}
+
 export default function HomePage() {
   const { t } = useI18n();
   const [featuredTools, setFeaturedTools] = useState<Tool[]>([]);
@@ -28,9 +38,9 @@ export default function HomePage() {
     async function fetchData() {
       try {
         const [featuredRes, newestRes, categoriesRes] = await Promise.all([
-          fetch("/api/tools?limit=6&sort=stars"),
-          fetch("/api/tools/newest"),
-          fetch("/api/categories"),
+          fetchWithRetry("/api/tools?limit=6&sort=stars"),
+          fetchWithRetry("/api/tools/newest"),
+          fetchWithRetry("/api/categories"),
         ]);
 
         const featuredJson = await featuredRes.json();
