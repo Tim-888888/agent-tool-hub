@@ -1,77 +1,58 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import { prisma } from "@/lib/db";
+import { withRetry } from "@/lib/retry";
+import { mapToolResponse, TOOL_PRISMA_INCLUDE } from "@/lib/api-utils";
 import Header from "@/components/layout/Header";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturedTools from "@/components/home/FeaturedTools";
 import NewestTools from "@/components/home/NewestTools";
 import CategoryGrid from "@/components/home/CategoryGrid";
 import Footer from "@/components/layout/Footer";
-import { useI18n } from "@/lib/i18n-context";
 import type { Tool, Category } from "@/types";
 
 const PLATFORM_COUNT = 7;
 
-async function fetchWithRetry(url: string, retries = 2): Promise<Response> {
-  for (let i = 0; i <= retries; i++) {
-    const res = await fetch(url);
-    if (res.ok) return res;
-    if (i === retries) return res;
-    await new Promise((r) => setTimeout(r, 500 * (i + 1)));
-  }
-  return new Response(null, { status: 500 });
-}
+export const revalidate = 3600;
 
-export default function HomePage() {
-  const { t } = useI18n();
-  const [featuredTools, setFeaturedTools] = useState<Tool[]>([]);
-  const [newestTools, setNewestTools] = useState<Tool[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [stats, setStats] = useState<{ tools: number; platforms: number; categories: number }>({
-    tools: 0,
+export default async function HomePage() {
+  // Fetch all data in parallel with retry — ISR caches the result
+  const [featuredRaw, newestRaw, categoriesRaw, totalCount] = await withRetry(() =>
+    Promise.all([
+      prisma.tool.findMany({
+        where: { status: { in: ["ACTIVE", "FEATURED"] } },
+        orderBy: { score: "desc" },
+        take: 6,
+        include: TOOL_PRISMA_INCLUDE,
+      }),
+      prisma.tool.findMany({
+        where: { status: { in: ["ACTIVE", "FEATURED"] } },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        include: TOOL_PRISMA_INCLUDE,
+      }),
+      prisma.category.findMany({
+        orderBy: { order: "asc" },
+        include: { _count: { select: { tools: true } } },
+      }),
+      prisma.tool.count({ where: { status: { in: ["ACTIVE", "FEATURED"] } } }),
+    ]),
+  );
+
+  const featuredTools: Tool[] = featuredRaw.map(mapToolResponse);
+  const newestTools: Tool[] = newestRaw.map(mapToolResponse);
+  const categories: Category[] = categoriesRaw.map(({ _count, ...rest }) => ({
+    ...rest,
+    descriptionEn: rest.descriptionEn ?? undefined,
+    descriptionZh: rest.descriptionZh ?? undefined,
+    toolCount: _count.tools,
+  }));
+
+  const stats = {
+    tools: totalCount,
     platforms: PLATFORM_COUNT,
-    categories: 0,
-  });
-  const [loading, setLoading] = useState(true);
+    categories: categories.length,
+  };
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [featuredRes, newestRes, categoriesRes] = await Promise.all([
-          fetchWithRetry("/api/tools?limit=6&sort=stars"),
-          fetchWithRetry("/api/tools/newest"),
-          fetchWithRetry("/api/categories"),
-        ]);
-
-        const featuredJson = await featuredRes.json();
-        const newestJson = await newestRes.json();
-        const categoriesJson = await categoriesRes.json();
-
-        if (featuredJson.success) {
-          setFeaturedTools(featuredJson.data);
-          setStats((prev) => ({
-            ...prev,
-            tools: featuredJson.meta?.total ?? featuredJson.data.length,
-          }));
-        }
-        if (newestJson.success) {
-          setNewestTools(newestJson.data);
-        }
-        if (categoriesJson.success) {
-          const cats = categoriesJson.data;
-          setCategories(cats);
-          setStats((prev) => ({ ...prev, categories: cats.length }));
-        }
-      } catch (error) {
-        // Silently handle fetch errors — pages show empty state
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
-
+  // Compute toolCounts for category grid from featured tools
   const toolCounts: Record<string, number> = {};
   for (const tool of featuredTools) {
     for (const cat of tool.categories) {
@@ -84,13 +65,9 @@ export default function HomePage() {
       <Header />
       <main className="flex-1">
         <HeroSection stats={stats} />
-        {!loading && (
-          <>
-            <FeaturedTools tools={featuredTools} />
-            <NewestTools tools={newestTools} />
-            <CategoryGrid categories={categories} toolCounts={toolCounts} />
-          </>
-        )}
+        <FeaturedTools tools={featuredTools} />
+        <NewestTools tools={newestTools} />
+        <CategoryGrid categories={categories} toolCounts={toolCounts} />
       </main>
       <Footer />
     </>
