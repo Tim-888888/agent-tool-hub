@@ -5,6 +5,7 @@ import { fetchWeeklyDownloads } from "@/lib/npm-client";
 import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser";
 import { withRetry } from "@/lib/retry";
 import { computeScore } from "@/lib/scoring";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -173,6 +174,9 @@ export async function GET(request: Request) {
         results,
       }),
     );
+
+    // Trigger on-demand revalidation so ISR pages pick up fresh data immediately
+    revalidatePath("/", "layout");
 
     return successResponse({ results, synced, failed, durationMs });
   } catch (error) {
