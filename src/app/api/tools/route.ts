@@ -11,6 +11,7 @@ import {
   successResponse,
   errorResponse,
 } from "@/lib/api-utils";
+import { withRetry } from "@/lib/retry";
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,16 +20,18 @@ export async function GET(request: NextRequest) {
     const where = buildWhereClause(sp);
     const orderBy = buildOrderBy(sp.get("sort"));
 
-    const [tools, total] = await Promise.all([
-      prisma.tool.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-        include: TOOL_PRISMA_INCLUDE,
-      }),
-      prisma.tool.count({ where }),
-    ]);
+    const [tools, total] = await withRetry(() =>
+      Promise.all([
+        prisma.tool.findMany({
+          where,
+          orderBy,
+          skip,
+          take: limit,
+          include: TOOL_PRISMA_INCLUDE,
+        }),
+        prisma.tool.count({ where }),
+      ]),
+    );
 
     return successResponse(tools.map(mapToolResponse), {
       total,

@@ -5,6 +5,7 @@ import {
   successResponse,
   errorResponse,
 } from "@/lib/api-utils";
+import { withRetry } from "@/lib/retry";
 
 export const revalidate = 60;
 
@@ -15,10 +16,12 @@ export async function GET(
   try {
     const { slug } = await params;
 
-    const tool = await prisma.tool.findUnique({
-      where: { slug },
-      include: TOOL_PRISMA_INCLUDE,
-    });
+    const tool = await withRetry(() =>
+      prisma.tool.findUnique({
+        where: { slug },
+        include: TOOL_PRISMA_INCLUDE,
+      }),
+    );
 
     if (!tool) {
       return errorResponse("Tool not found", 404);

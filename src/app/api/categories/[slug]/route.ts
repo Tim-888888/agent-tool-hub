@@ -5,6 +5,7 @@ import {
   successResponse,
   errorResponse,
 } from "@/lib/api-utils";
+import { withRetry } from "@/lib/retry";
 
 export const revalidate = 60;
 
@@ -15,18 +16,20 @@ export async function GET(
   try {
     const { slug } = await params;
 
-    const category = await prisma.category.findUnique({
-      where: { slug },
-      include: {
-        tools: {
-          include: {
-            tool: {
-              include: TOOL_PRISMA_INCLUDE,
+    const category = await withRetry(() =>
+      prisma.category.findUnique({
+        where: { slug },
+        include: {
+          tools: {
+            include: {
+              tool: {
+                include: TOOL_PRISMA_INCLUDE,
+              },
             },
           },
         },
-      },
-    });
+      }),
+    );
 
     if (!category) {
       return errorResponse("Category not found", 404);

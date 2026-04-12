@@ -1,16 +1,17 @@
 import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
+import { withRetry } from "@/lib/retry";
 
 export const revalidate = 300;
 
 export async function GET() {
   try {
-    const categories = await prisma.category.findMany({
+    const categories = await withRetry(() => prisma.category.findMany({
       orderBy: { order: "asc" },
       include: {
         _count: { select: { tools: true } },
       },
-    });
+    }));
 
     const mapped = categories.map(({ _count, ...rest }) => ({
       ...rest,

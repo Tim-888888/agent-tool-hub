@@ -1,27 +1,25 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { TOOLS } from "@/lib/mock-data";
+import { prisma } from "@/lib/db";
+import { TOOL_PRISMA_INCLUDE, mapToolResponse } from "@/lib/api-utils";
+import { withRetry } from "@/lib/retry";
 import type { Tool } from "@/types";
 import ToolDetailClient from "./ToolDetailClient";
-
-const API_BASE = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  return TOOLS.map((tool) => ({ slug: tool.slug }));
-}
+export const revalidate = 60;
 
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   try {
-    const res = await fetch(`${API_BASE}/api/tools/${slug}`, { cache: "no-store" });
-    if (!res.ok) return { title: "Tool Not Found" };
-    const { data: tool } = await res.json();
+    const tool = await withRetry(() =>
+      prisma.tool.findUnique({ where: { slug } }),
+    );
     if (!tool) return { title: "Tool Not Found" };
 
     return {
@@ -64,23 +62,27 @@ function buildJsonLd(tool: Tool): object {
 
 export default async function ToolDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  try {
-    const res = await fetch(`${API_BASE}/api/tools/${slug}`, { cache: "no-store" });
-    if (!res.ok) notFound();
-    const { data: tool } = await res.json();
-    if (!tool) notFound();
+  const raw = await withRetry(() =>
+    prisma.tool.findUnique({
+      where: { slug },
+      include: {
+        categories: { include: { category: true } },
+        platforms: { include: { platform: true } },
+      },
+    }),
+  );
 
-    return (
-      <>
-        <ToolDetailClient tool={tool} />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(tool)) }}
-        />
-      </>
-    );
-  } catch (error) {
-    if (error && typeof error === "object" && "digest" in error) throw error;
-    notFound();
-  }
+  if (!raw) notFound();
+
+  const tool = mapToolResponse(raw);
+
+  return (
+    <>
+      <ToolDetailClient tool={tool} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(tool)) }}
+      />
+    </>
+  );
 }

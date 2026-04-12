@@ -1,49 +1,70 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { CATEGORIES } from '@/lib/mock-data';
+import { prisma } from '@/lib/db';
+import { TOOL_PRISMA_INCLUDE, mapToolResponse } from '@/lib/api-utils';
+import { withRetry } from '@/lib/retry';
 import CategoryDetailClient from './CategoryDetailClient';
-
-const API_BASE = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  return CATEGORIES.map((cat) => ({ slug: cat.slug }));
-}
+export const revalidate = 60;
 
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const category = CATEGORIES.find((c) => c.slug === slug);
-  if (!category) {
+  try {
+    const category = await withRetry(() =>
+      prisma.category.findUnique({ where: { slug } }),
+    );
+    if (!category) return { title: 'Category Not Found' };
+
+    return {
+      title: `${category.nameEn} Tools — AgentToolHub`,
+      description: category.descriptionEn ?? `Discover the best ${category.nameEn} tools for AI agents.`,
+    };
+  } catch {
     return { title: 'Category Not Found' };
   }
-
-  return {
-    title: `${category.nameEn} Tools — AgentToolHub`,
-    description:
-      category.descriptionEn ??
-      `Discover the best ${category.nameEn} tools for AI agents.`,
-  };
 }
 
 export default async function CategoryPage({ params }: PageProps) {
   const { slug } = await params;
 
-  try {
-    const res = await fetch(`${API_BASE}/api/categories/${slug}`, { cache: 'no-store' });
-    if (!res.ok) notFound();
-    const { data: category } = await res.json();
-    if (!category) notFound();
+  const category = await withRetry(() =>
+    prisma.category.findUnique({
+      where: { slug },
+      include: {
+        tools: {
+          where: { tool: { status: { in: ['ACTIVE', 'FEATURED'] } } },
+          include: {
+            tool: {
+              include: TOOL_PRISMA_INCLUDE,
+            },
+          },
+        },
+      },
+    }),
+  );
 
-    return (
-      <CategoryDetailClient category={category} tools={category.tools ?? []} />
-    );
-  } catch (error) {
-    if (error && typeof error === 'object' && 'digest' in error) throw error;
-    notFound();
-  }
+  if (!category) notFound();
+
+  const tools = category.tools.map((tc) => mapToolResponse(tc.tool)).filter(Boolean);
+
+  return (
+    <CategoryDetailClient
+      category={{
+        id: category.id,
+        nameEn: category.nameEn,
+        nameZh: category.nameZh,
+        slug: category.slug,
+        icon: category.icon,
+        descriptionEn: category.descriptionEn ?? undefined,
+        descriptionZh: category.descriptionZh ?? undefined,
+      }}
+      tools={tools}
+    />
+  );
 }

@@ -10,10 +10,11 @@ export default async function AdminSubmissionsPage() {
     redirect("/")
   }
 
-  const ADMIN_GITHUB_IDS = (process.env.ADMIN_GITHUB_IDS ?? "")
+  const adminIds = (process.env.ADMIN_GITHUB_IDS ?? "")
     .split(",")
+    .map(s => s.trim())
     .filter(Boolean)
-  if (!ADMIN_GITHUB_IDS.includes(session.user.id)) {
+  if (!adminIds.includes(session.user.id)) {
     redirect("/")
   }
 

@@ -10,20 +10,12 @@ function getLocalePath(path: string, locale: string): string {
   return `/${locale}${path}`;
 }
 
-// Must match server-side ADMIN_GITHUB_IDS in auth-helpers.ts
-const ADMIN_GITHUB_IDS = (typeof window !== 'undefined'
-  ? (window as unknown as { __ADMIN_IDS?: string }).__ADMIN_IDS
-  : '') ?? '';
-
 export default function Header() {
   const { locale, t } = useI18n();
   const pathname = usePathname();
   const { data: session } = useSession();
 
-  // Check if current user is admin
-  const isAdmin = session?.user?.id
-    ? (process.env.NEXT_PUBLIC_ADMIN_GITHUB_IDS ?? '').split(',').includes(session.user.id)
-    : false;
+  const isAdmin = session?.user?.isAdmin ?? false;
 
   // Strip current locale prefix to get the base path
   const basePath = pathname.replace(/^\/(en|zh)/, '') || '/';

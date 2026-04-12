@@ -5,17 +5,18 @@ import {
   successResponse,
   errorResponse,
 } from "@/lib/api-utils";
+import { withRetry } from "@/lib/retry";
 
 export const revalidate = 60;
 
 export async function GET() {
   try {
-    const tools = await prisma.tool.findMany({
+    const tools = await withRetry(() => prisma.tool.findMany({
       where: { status: { in: ["ACTIVE", "FEATURED"] } },
       orderBy: { lastCommitAt: "desc" },
       take: 6,
       include: TOOL_PRISMA_INCLUDE,
-    });
+    }));
 
     return successResponse(tools.map(mapToolResponse));
   } catch {
