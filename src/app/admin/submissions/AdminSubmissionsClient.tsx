@@ -201,7 +201,14 @@ export default function AdminSubmissionsClient({
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-[var(--text-primary)]">{sub.repoUrl}</p>
+                    <a
+                      href={sub.repoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-[var(--color-accent)] hover:underline"
+                    >
+                      {sub.repoUrl} ↗
+                    </a>
                     <p className="text-sm text-[var(--text-secondary)]">
                       {t("admin.by")} {sub.user?.name ?? "Unknown"} {t("admin.on")}{" "}
                       {new Date(sub.createdAt).toLocaleDateString()}
@@ -288,7 +295,14 @@ export default function AdminSubmissionsClient({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-[var(--text-primary)]">{tool.name}</p>
-                    <p className="text-sm text-[var(--text-secondary)]">{tool.repoUrl}</p>
+                    <a
+                      href={tool.repoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-[var(--color-accent)] hover:underline"
+                    >
+                      {tool.repoUrl} ↗
+                    </a>
                   </div>
                   <div className="flex items-center gap-2">
                     {tool.stars > 0 && (
