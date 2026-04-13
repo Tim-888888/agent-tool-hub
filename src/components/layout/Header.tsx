@@ -58,7 +58,7 @@ export default function Header() {
           </Link>
           {isAdmin && (
             <Link
-              href="/admin/submissions"
+              href={getLocalePath('/admin/submissions', locale)}
               className="rounded-lg bg-[var(--color-accent)]/10 px-3 py-1 text-sm font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20"
             >
               {t('nav.admin')}
