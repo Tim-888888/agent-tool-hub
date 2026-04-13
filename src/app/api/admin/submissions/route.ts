@@ -9,6 +9,8 @@ import {
 } from "@/lib/github-client"
 import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser"
 import { computeScore } from "@/lib/scoring"
+import { generateCollectionContent } from "@/lib/translate"
+import { connectAllPlatforms, classifyAndConnectCategories, enrichTranslations } from "@/lib/tool-enrichment"
 
 export const dynamic = "force-dynamic"
 
@@ -134,6 +136,34 @@ export async function PATCH(request: Request): Promise<Response> {
     }
   }
 
+  // Handle features: use extracted features or generate collection content
+  let finalFeaturesEn = features
+  let finalFeaturesZh: string[] = []
+  let finalInstallGuide: string | Record<string, string> | null = installGuide
+
+  if (features.length === 0) {
+    const collectionContent = await generateCollectionContent(
+      repo,
+      repoData.description ?? "",
+      submission.repoUrl,
+      readmeContent,
+    )
+    finalFeaturesEn = collectionContent.featuresEn
+    finalFeaturesZh = collectionContent.featuresZh
+    if (!installGuide) {
+      finalInstallGuide = { en: collectionContent.installGuideEn, zh: collectionContent.installGuideZh }
+    }
+  }
+
+  const guideStr = typeof finalInstallGuide === 'string' ? finalInstallGuide : null
+  const { descriptionZh, featuresZh, installGuide: translatedGuide } = await enrichTranslations(
+    repoData.description ?? "",
+    finalFeaturesEn,
+    finalFeaturesZh,
+    guideStr,
+  )
+  let structuredInstallGuide = translatedGuide ?? finalInstallGuide
+
   // Create Tool and update Submission in a transaction
   const tool = await prisma.tool.create({
     data: {
@@ -148,12 +178,24 @@ export async function PATCH(request: Request): Promise<Response> {
       language: repoData.language,
       license: repoData.license?.key ?? null,
       lastCommitAt: new Date(repoData.pushed_at),
-      featuresEn: features,
-      installGuide: installGuide ? { markdown: installGuide } : undefined,
+      featuresEn: finalFeaturesEn,
+      descriptionZh,
+      featuresZh,
+      installGuide: structuredInstallGuide
+        ? (typeof structuredInstallGuide === 'string'
+          ? { markdown: structuredInstallGuide }
+          : structuredInstallGuide)
+        : undefined,
       status: "ACTIVE",
       score,
     },
   })
+
+  if (features.length === 0) {
+    await connectAllPlatforms(tool.id)
+  }
+
+  await classifyAndConnectCategories(tool.id, repo, repoData.description ?? "", readmeContent)
 
   await prisma.submission.update({
     where: { id: submissionId },

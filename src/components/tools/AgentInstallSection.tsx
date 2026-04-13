@@ -26,16 +26,9 @@ export default function AgentInstallSection({ tool }: AgentInstallSectionProps) 
     );
   }
 
-  // Case 2: { markdown: "..." } wrapper — extract text
+  // Case 2: { markdown: "..." } wrapper — already rendered by InstallGuide, skip here
   if (guide.markdown && typeof guide.markdown === 'string') {
-    return (
-      <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] p-4">
-        <h3 className="text-sm font-semibold text-[var(--text-primary)]">{t('tool.quickInstall')}</h3>
-        <pre className="mt-2 overflow-x-auto text-xs text-[var(--text-secondary)]">
-          <code>{guide.markdown}</code>
-        </pre>
-      </div>
-    );
+    return null;
   }
 
   // Case 3: structured per-platform install guides — show each as a command block

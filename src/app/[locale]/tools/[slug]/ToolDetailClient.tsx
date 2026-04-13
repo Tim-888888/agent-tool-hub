@@ -98,7 +98,7 @@ export default function ToolDetailClient({ tool }: Props) {
                   <h2 className="mb-4 text-xl font-semibold text-[var(--text-primary)]">
                     {t('tool.installGuide')}
                   </h2>
-                  <InstallGuide guide={tool.installGuide} />
+                  <InstallGuide guide={tool.installGuide} locale={locale} />
                 </section>
               )}
 

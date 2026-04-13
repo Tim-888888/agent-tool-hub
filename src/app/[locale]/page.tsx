@@ -52,14 +52,6 @@ export default async function HomePage() {
     categories: categories.length,
   };
 
-  // Compute toolCounts for category grid from featured tools
-  const toolCounts: Record<string, number> = {};
-  for (const tool of featuredTools) {
-    for (const cat of tool.categories) {
-      toolCounts[cat.slug] = (toolCounts[cat.slug] ?? 0) + 1;
-    }
-  }
-
   return (
     <>
       <Header />
@@ -67,7 +59,7 @@ export default async function HomePage() {
         <HeroSection stats={stats} />
         <FeaturedTools tools={featuredTools} />
         <NewestTools tools={newestTools} />
-        <CategoryGrid categories={categories} toolCounts={toolCounts} />
+        <CategoryGrid categories={categories} />
       </main>
       <Footer />
     </>

@@ -11,6 +11,8 @@ import { fetchWeeklyDownloads } from "@/lib/npm-client";
 import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser";
 import { computeScore } from "@/lib/scoring";
 import { withRetry } from "@/lib/retry";
+import { translateToolToChinese, generateCollectionContent, translateInstallGuide } from "@/lib/translate";
+import { connectAllPlatforms, classifyAndConnectCategories } from "@/lib/tool-enrichment";
 
 export const dynamic = "force-dynamic";
 
@@ -112,18 +114,69 @@ export async function PATCH(request: Request): Promise<Response> {
     // Only set features/installGuide if existing values are empty
     if (features.length > 0 && (!tool.featuresEn || tool.featuresEn.length === 0)) {
       updateData.featuresEn = features;
+    } else if (!tool.featuresEn || tool.featuresEn.length === 0) {
+      // No features extracted — generate collection summary for awesome-list type repos
+      const collectionContent = await generateCollectionContent(
+        tool.name,
+        (updateData.description as string) ?? tool.description,
+        tool.repoUrl,
+        readmeContent,
+      );
+      updateData.featuresEn = collectionContent.featuresEn;
+      updateData.featuresZh = collectionContent.featuresZh;
+      if (!tool.installGuide && !installGuide) {
+        updateData.installGuide = {
+          en: collectionContent.installGuideEn,
+          zh: collectionContent.installGuideZh,
+        };
+      }
     }
     if (installGuide && !tool.installGuide) {
-      updateData.installGuide = { markdown: installGuide };
+      // Translate install guide to Chinese
+      const guideZh = await translateInstallGuide(installGuide);
+      updateData.installGuide = {
+        en: installGuide,
+        zh: guideZh ?? installGuide,
+      };
     }
     if (npmDownloads !== null) {
       updateData.npmDownloads = npmDownloads;
+    }
+
+    // Translate to Chinese via GLM API
+    const finalDescription = (updateData.description as string) ?? tool.description;
+    const finalFeatures = ((updateData.featuresEn as string[]) ?? tool.featuresEn) as string[];
+    // Skip translation if featuresZh was already set by generateCollectionContent
+    if (!(updateData.featuresZh as string[])?.length) {
+      const translation = await translateToolToChinese(finalDescription, finalFeatures);
+      if (translation.descriptionZh) {
+        updateData.descriptionZh = translation.descriptionZh;
+      }
+      if (translation.featuresZh.length > 0) {
+        updateData.featuresZh = translation.featuresZh;
+      }
+    } else if (!updateData.descriptionZh) {
+      const translation = await translateToolToChinese(finalDescription, []);
+      if (translation.descriptionZh) {
+        updateData.descriptionZh = translation.descriptionZh;
+      }
     }
 
     await prisma.tool.update({
       where: { id: toolId },
       data: updateData,
     });
+
+    if (features.length === 0) {
+      await connectAllPlatforms(toolId);
+    }
+
+    await classifyAndConnectCategories(
+      toolId,
+      tool.name,
+      (updateData.description as string) ?? tool.description,
+      readmeContent,
+    );
   } else {
     // No GitHub enrichment possible, just activate
     await prisma.tool.update({

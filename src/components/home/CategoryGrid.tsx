@@ -6,10 +6,9 @@ import type { Category } from '@/types';
 
 interface CategoryGridProps {
   categories: Category[];
-  toolCounts: Record<string, number>;
 }
 
-export default function CategoryGrid({ categories, toolCounts }: CategoryGridProps) {
+export default function CategoryGrid({ categories }: CategoryGridProps) {
   const { t, locale } = useI18n();
 
   if (categories.length === 0) return null;
@@ -29,7 +28,7 @@ export default function CategoryGrid({ categories, toolCounts }: CategoryGridPro
                 {locale === 'zh' ? cat.nameZh : cat.nameEn}
               </h3>
               <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                {toolCounts[cat.slug] ?? 0} {t('home.tools')}
+                {cat.toolCount ?? 0} {t('home.tools')}
               </p>
             </Link>
           ))}
