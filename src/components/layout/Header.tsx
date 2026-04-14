@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useI18n } from '@/lib/i18n-context';
 import LoginButton from '@/components/auth/LoginButton';
@@ -13,6 +13,7 @@ function getLocalePath(path: string, locale: string): string {
 export default function Header() {
   const { locale, t } = useI18n();
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
 
   const isAdmin = session?.user?.isAdmin ?? false;
@@ -24,8 +25,8 @@ export default function Header() {
     const newLocale = locale === 'en' ? 'zh' : 'en';
     // Set cookie so proxy middleware respects user's choice
     document.cookie = `NEXT_LOCALE=${newLocale};path=/;max-age=${60 * 60 * 24 * 365}`;
-    // Full page navigation to ensure locale change takes effect
-    window.location.href = `/${newLocale}${basePath}`;
+    // Use client-side navigation to preserve React state and NextAuth session
+    router.push(`/${newLocale}${basePath}`);
   };
 
   return (
