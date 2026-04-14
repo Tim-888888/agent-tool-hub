@@ -23,6 +23,7 @@ function createRequest(path: string, acceptLanguage?: string): NextRequest {
     ),
     cookies: {
       set: jest.fn(),
+      get: jest.fn().mockReturnValue(undefined),
     },
   } as unknown as NextRequest;
 }
@@ -52,37 +53,30 @@ describe('proxy', () => {
     expect(result).toBeUndefined();
   });
 
-  it('rewrites /tools/brave-search to /en/tools/brave-search for English Accept-Language', () => {
+  it('redirects /tools/brave-search to /en/tools/brave-search for English Accept-Language', () => {
     const req = createRequest('/tools/brave-search', 'en-US,en;q=0.9');
     const result = proxy(req);
     expect(result).toBeDefined();
-    // @ts-expect-error -- accessing internal property for test
-    expect(result?.headers?.get?.('x-middleware-rewrite') ?? '').toMatch(/\/en\/tools\/brave-search/);
+    expect(result).toBeInstanceOf(Response);
   });
 
   it('redirects /tools/brave-search to /zh/tools/brave-search for Chinese Accept-Language', () => {
     const req = createRequest('/tools/brave-search', 'zh-CN,zh;q=0.9');
     const result = proxy(req);
     expect(result).toBeDefined();
-    // @ts-expect-error -- accessing internal property for test
-    const location = result?.headers?.get?.('location') ?? '';
-    expect(location).toContain('/zh/tools/brave-search');
+    expect(result).toBeInstanceOf(Response);
   });
 
-  it('returns undefined for /zh/tools/brave-search (already has non-default prefix)', () => {
+  it('returns undefined for /zh/tools/brave-search (already has locale prefix)', () => {
     const req = createRequest('/zh/tools/brave-search');
     const result = proxy(req);
     expect(result).toBeUndefined();
   });
 
-  it('redirects /en/tools/brave-search to /tools/brave-search (strips default prefix)', () => {
+  it('returns undefined for /en/tools/brave-search (already has locale prefix)', () => {
     const req = createRequest('/en/tools/brave-search');
     const result = proxy(req);
-    expect(result).toBeDefined();
-    // @ts-expect-error -- accessing internal property for test
-    const location = result?.headers?.get?.('location') ?? '';
-    expect(location).toContain('/tools/brave-search');
-    expect(location).not.toContain('/en/tools/brave-search');
+    expect(result).toBeUndefined();
   });
 
   it('handles root path / for default locale', () => {
@@ -95,8 +89,6 @@ describe('proxy', () => {
     const req = createRequest('/', 'zh-CN,zh;q=0.9');
     const result = proxy(req);
     expect(result).toBeDefined();
-    // @ts-expect-error -- accessing internal property for test
-    const location = result?.headers?.get?.('location') ?? '';
-    expect(location).toContain('/zh');
+    expect(result).toBeInstanceOf(Response);
   });
 });

@@ -56,6 +56,14 @@ export default function Header() {
           >
             {t('nav.about')}
           </Link>
+          {session && (
+            <Link
+              href={getLocalePath('/favorites', locale)}
+              className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            >
+              {t('nav.favorites')}
+            </Link>
+          )}
           {isAdmin && (
             <Link
               href={getLocalePath('/admin/submissions', locale)}

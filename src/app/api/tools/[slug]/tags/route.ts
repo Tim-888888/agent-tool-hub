@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { requireAuth } from "@/lib/auth-helpers";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { TAG_PRESETS } from "@/lib/tag-presets";
 import { z } from "zod";
 
@@ -62,6 +63,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const limited = checkRateLimit(request, RATE_LIMITS.write);
+  if (limited) return limited;
+
   try {
     const { session, error: authError } = await requireAuth();
     if (authError) return authError;

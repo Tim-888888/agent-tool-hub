@@ -7,7 +7,8 @@
     "submit": "提交",
     "about": "关于",
     "search": "搜索工具...",
-    "admin": "管理"
+    "admin": "管理",
+    "favorites": "收藏"
   },
   "hero": {
     "title": "发现 AI Agent 工具",
@@ -157,5 +158,17 @@
     "signInToVote": "登录后投票",
     "tagVoteLimit": "每个工具最多可投 3 个标签",
     "votedCount": "已投 {count}/3"
+  },
+  "favorites": {
+    "title": "我的收藏",
+    "description": "你保存的工具，方便快速访问",
+    "add": "添加收藏",
+    "remove": "取消收藏",
+    "save": "收藏",
+    "saved": "已收藏",
+    "empty": "暂无收藏",
+    "emptyDesc": "浏览工具并点击心形图标来收藏它们。",
+    "browseTools": "浏览工具",
+    "signInToFavorites": "登录后收藏工具"
   }
 }

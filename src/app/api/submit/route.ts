@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { successResponse, errorResponse } from "@/lib/api-utils"
 import { requireAuth } from "@/lib/auth-helpers"
 import { parseRepoUrl, fetchRepoData } from "@/lib/github-client"
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 
 export const dynamic = "force-dynamic"
 
@@ -18,6 +19,9 @@ const submitSchema = z.object({
 })
 
 export async function POST(request: Request): Promise<Response> {
+  const limited = checkRateLimit(request, RATE_LIMITS.write)
+  if (limited) return limited
+
   // Per D-12: require authentication
   const { session, error } = await requireAuth()
   if (error) return error

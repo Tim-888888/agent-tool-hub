@@ -9,8 +9,12 @@ import {
   successResponse,
   errorResponse,
 } from "@/lib/api-utils";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
+  const limited = checkRateLimit(request, RATE_LIMITS.search);
+  if (limited) return limited;
+
   try {
     const sp = request.nextUrl.searchParams;
     const { page, limit, skip } = parsePagination(sp);

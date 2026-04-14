@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { successResponse, errorResponse, parsePagination } from "@/lib/api-utils";
 import { requireAuth } from "@/lib/auth-helpers";
+import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const reviewSchema = z.object({
@@ -61,6 +62,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  const limited = checkRateLimit(request, RATE_LIMITS.write);
+  if (limited) return limited;
+
   try {
     const { session, error: authError } = await requireAuth();
     if (authError) return authError;
