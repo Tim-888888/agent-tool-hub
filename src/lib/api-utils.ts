@@ -64,6 +64,52 @@ export function buildWhereClause(searchParams: URLSearchParams): PrismaWhere {
     });
   }
 
+  const license = searchParams.get("license");
+  if (license) {
+    const licenses = license.split(",").filter(Boolean);
+    if (licenses.length === 1) {
+      conditions.push({ license: licenses[0] });
+    } else if (licenses.length > 1) {
+      conditions.push({ license: { in: licenses } });
+    }
+  }
+
+  const language = searchParams.get("language");
+  if (language) {
+    const languages = language.split(",").filter(Boolean);
+    if (languages.length === 1) {
+      conditions.push({ language: languages[0] });
+    } else if (languages.length > 1) {
+      conditions.push({ language: { in: languages } });
+    }
+  }
+
+  const maintenance = searchParams.get("maintenance");
+  if (maintenance) {
+    const now = new Date();
+    const NINETY_DAYS = 90 * 24 * 60 * 60 * 1000;
+    const YEAR = 365 * 24 * 60 * 60 * 1000;
+    if (maintenance === "active") {
+      conditions.push({
+        lastCommitAt: { gte: new Date(now.getTime() - NINETY_DAYS) },
+      });
+    } else if (maintenance === "inactive") {
+      conditions.push({
+        lastCommitAt: {
+          gte: new Date(now.getTime() - YEAR),
+          lt: new Date(now.getTime() - NINETY_DAYS),
+        },
+      });
+    } else if (maintenance === "archived") {
+      conditions.push({
+        OR: [
+          { lastCommitAt: { lt: new Date(now.getTime() - YEAR) } },
+          { lastCommitAt: null },
+        ],
+      });
+    }
+  }
+
   if (conditions.length === 1) {
     return conditions[0];
   }

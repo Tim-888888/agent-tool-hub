@@ -8,6 +8,7 @@
 
 import { prisma } from "@/lib/db";
 import { fetchRepoData, parseRepoUrl } from "@/lib/github-client";
+import { translateToolToChinese } from "@/lib/translate";
 import { fetchWeeklyDownloads } from "@/lib/npm-client";
 import { computeScore } from "@/lib/scoring";
 import { withRetry } from "@/lib/retry";
@@ -239,6 +240,21 @@ export async function runDiscovery(): Promise<DiscoveryResult[]> {
         },
       });
 
+      // Translate to Chinese (fire-and-forget, non-critical)
+      const desc = repo.description || "";
+      if (desc) {
+        translateToolToChinese(desc, [])
+          .then(async (translation) => {
+            if (translation.descriptionZh) {
+              await prisma.tool.update({
+                where: { slug },
+                data: { descriptionZh: translation.descriptionZh },
+              });
+            }
+          })
+          .catch(() => {});
+      }
+
       gitHubCreated++;
     } catch (error) {
       gitHubErrors.push(
@@ -338,6 +354,21 @@ export async function runDiscovery(): Promise<DiscoveryResult[]> {
           score,
         },
       });
+
+      // Translate to Chinese (fire-and-forget, non-critical)
+      const descForNpm = description || "";
+      if (descForNpm) {
+        translateToolToChinese(descForNpm, [])
+          .then(async (translation) => {
+            if (translation.descriptionZh) {
+              await prisma.tool.update({
+                where: { slug },
+                data: { descriptionZh: translation.descriptionZh },
+              });
+            }
+          })
+          .catch(() => {});
+      }
 
       npmCreated++;
     } catch (error) {

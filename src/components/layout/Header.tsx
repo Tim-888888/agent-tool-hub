@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useI18n } from '@/lib/i18n-context';
 import LoginButton from '@/components/auth/LoginButton';
+import NotificationBell from '@/components/layout/NotificationBell';
 
 function getLocalePath(path: string, locale: string): string {
   return `/${locale}${path}`;
@@ -52,6 +53,18 @@ export default function Header() {
             {t('nav.rankings')}
           </Link>
           <Link
+            href={getLocalePath('/contributors', locale)}
+            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          >
+            {t('nav.contributors')}
+          </Link>
+          <Link
+            href={getLocalePath('/collections', locale)}
+            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          >
+            {t('nav.collections')}
+          </Link>
+          <Link
             href={getLocalePath('/about', locale)}
             className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           >
@@ -73,6 +86,7 @@ export default function Header() {
               {t('nav.admin')}
             </Link>
           )}
+          <NotificationBell />
           <LoginButton />
           <button
             onClick={toggleLocale}

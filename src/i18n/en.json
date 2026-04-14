@@ -8,7 +8,9 @@
     "about": "About",
     "search": "Search tools...",
     "admin": "Admin",
-    "favorites": "Favorites"
+    "favorites": "Favorites",
+    "contributors": "Contributors",
+    "collections": "Collections"
   },
   "hero": {
     "title": "Discover AI Agent Tools",
@@ -71,7 +73,13 @@
     "nameAZ": "Name A-Z",
     "allTypes": "All Types",
     "allPlatforms": "All Platforms",
-    "allCategories": "All Categories"
+    "allCategories": "All Categories",
+    "allLicenses": "All Licenses",
+    "allLanguages": "All Languages",
+    "allMaintenance": "All Maintenance",
+    "active": "Active",
+    "inactive": "Inactive",
+    "archived": "Archived"
   },
   "ranking": {
     "title": "Rankings",
@@ -94,6 +102,23 @@
     "description": "Discover the best tools for your AI coding agents",
     "builtWith": "Built with Next.js and Prisma"
   },
+  "newsletter": {
+    "title": "Stay Updated",
+    "description": "Get weekly updates on the best new AI agent tools.",
+    "placeholder": "your@email.com",
+    "subscribe": "Subscribe",
+    "success": "Subscribed! Check your email for confirmation.",
+    "error": "Failed to subscribe. Please try again.",
+    "unsubscribed": "You have been unsubscribed successfully.",
+    "unsubscribeError": "Failed to unsubscribe. Please try again.",
+    "adminTitle": "Newsletter Subscribers",
+    "totalSubscribers": "Total Subscribers",
+    "active": "Active",
+    "inactive": "Inactive",
+    "recentSubscribers": "Recent Subscribers",
+    "noSubscribers": "No subscribers yet.",
+    "loadError": "Failed to load subscriber data."
+  },
   "auth": {
     "signIn": "Sign in",
     "signInWithGithub": "Sign in with GitHub",
@@ -111,7 +136,8 @@
     "pending": "PENDING",
     "anonymous": "Anonymous",
     "switchToEnglish": "Switch to English",
-    "switchToChinese": "Switch to Chinese"
+    "switchToChinese": "Switch to Chinese",
+    "loading": "Loading..."
   },
   "admin": {
     "submissionsTitle": "Submissions ({count} pending)",
@@ -170,5 +196,36 @@
     "emptyDesc": "Browse tools and click the heart icon to save them here.",
     "browseTools": "Browse Tools",
     "signInToFavorites": "Sign in to save favorites"
+  },
+  "compare": {
+    "title": "Compare Tools",
+    "description": "Compare AI agent tools side by side to find the best fit for your workflow.",
+    "searchPlaceholder": "Search to add a tool...",
+    "empty": "Search and add tools above to start comparing.",
+    "remove": "Remove",
+    "add": "Add to compare",
+    "platforms": "Platforms",
+    "categories": "Categories"
+  },
+  "contributors": {
+    "title": "Contributors",
+    "description": "Top contributors who submitted tools to the community",
+    "empty": "No contributors yet. Be the first to submit a tool!",
+    "anonymous": "Anonymous",
+    "lastActive": "Last active",
+    "approved": "approved"
+  },
+  "collections": {
+    "title": "Collections",
+    "description": "Curated collections of the best AI agent tools",
+    "empty": "No collections yet.",
+    "tools": "tools",
+    "notFound": "Collection not found.",
+    "noTools": "No tools in this collection yet."
+  },
+  "match": {
+    "title": "Find Your Perfect Tool",
+    "description": "Answer a few questions and we'll recommend the best tools for your workflow",
+    "noResults": "No matching tools found. Try different preferences."
   }
 }

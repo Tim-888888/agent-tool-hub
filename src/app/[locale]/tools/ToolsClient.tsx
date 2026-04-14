@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -8,6 +8,7 @@ import ToolCard from "@/components/tools/ToolCard";
 import FilterBar from "@/components/ui/FilterBar";
 import { useI18n } from "@/lib/i18n-context";
 import type { Tool, ToolFilters } from "@/types";
+import { trackEvent } from "@/hooks/useAnalytics";
 
 const PAGE_SIZE = 12;
 
@@ -27,12 +28,21 @@ export default function ToolsClient() {
   const [meta, setMeta] = useState<ApiMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const prevQueryRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (urlQuery) {
       setFilters((prev) => ({ ...prev, query: urlQuery }));
     }
   }, [urlQuery]);
+
+  // Track search queries
+  useEffect(() => {
+    if (filters.query && filters.query !== prevQueryRef.current) {
+      trackEvent('tool_search', { query: filters.query });
+      prevQueryRef.current = filters.query;
+    }
+  }, [filters.query]);
 
   const fetchTools = useCallback(async (page: number, append: boolean) => {
     if (append) {
@@ -47,6 +57,9 @@ export default function ToolsClient() {
       if (filters.type) params.set("type", filters.type);
       if (filters.platform) params.set("platform", filters.platform);
       if (filters.category) params.set("category", filters.category);
+      if (filters.license) params.set("license", filters.license);
+      if (filters.language) params.set("language", filters.language);
+      if (filters.maintenance) params.set("maintenance", filters.maintenance);
       if (filters.sort) params.set("sort", filters.sort);
       params.set("page", String(page));
       params.set("limit", String(PAGE_SIZE));

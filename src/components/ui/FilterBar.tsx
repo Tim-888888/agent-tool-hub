@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { PLATFORMS as ALL_PLATFORMS } from '@/lib/mock-data';
 import { useI18n } from '@/lib/i18n-context';
 import SearchInput from '@/components/ui/SearchInput';
+import MultiSelect from '@/components/ui/MultiSelect';
 import { useDebounce } from '@/hooks/useDebounce';
 
 interface FilterBarProps {
@@ -16,28 +17,37 @@ interface FilterBarProps {
 const TYPE_VALUES = ['', 'mcp', 'skill', 'rule'] as const;
 const SEARCH_DEBOUNCE_MS = 300;
 
+interface FilterOptions {
+  licenses: string[];
+  languages: string[];
+}
+
 export default function FilterBar({
   currentFilters,
   onFilterChange,
 }: FilterBarProps) {
   const { locale, t } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({ licenses: [], languages: [] });
   const [searchText, setSearchText] = useState(currentFilters.query ?? '');
   const debouncedSearch = useDebounce(searchText, SEARCH_DEBOUNCE_MS);
 
   useEffect(() => {
-    async function fetchCategories() {
+    async function fetchOptions() {
       try {
-        const res = await fetch('/api/categories');
-        const json = await res.json();
-        if (json.success) {
-          setCategories(json.data);
-        }
+        const [catRes, filterRes] = await Promise.all([
+          fetch('/api/categories'),
+          fetch('/api/tools/filters'),
+        ]);
+        const catJson = await catRes.json();
+        if (catJson.success) setCategories(catJson.data);
+        const filterJson = await filterRes.json();
+        if (filterJson.success) setFilterOptions(filterJson.data);
       } catch {
-        // Silently handle — dropdown remains empty
+        // Silently handle — dropdowns remain empty
       }
     }
-    fetchCategories();
+    fetchOptions();
   }, []);
 
   // Sync external query changes (e.g., URL param) back to local input
@@ -45,7 +55,6 @@ export default function FilterBar({
     if ((currentFilters.query ?? '') !== searchText) {
       setSearchText(currentFilters.query ?? '');
     }
-    // Only react to external query changes, not our own setSearchText
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFilters.query]);
 
@@ -58,12 +67,22 @@ export default function FilterBar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch]);
 
+  const selectedLicenses = currentFilters.license ? currentFilters.license.split(',').filter(Boolean) : [];
+  const selectedLanguages = currentFilters.language ? currentFilters.language.split(',').filter(Boolean) : [];
+
   const typeLabels: Record<string, string> = {
     '': t('filter.allTypes'),
     mcp: t('tool.type.mcp_server'),
     skill: t('tool.type.skill'),
     rule: t('tool.type.rule'),
   };
+
+  const maintenanceOptions = [
+    { value: '', label: t('filter.allMaintenance') },
+    { value: 'active', label: t('filter.active') },
+    { value: 'inactive', label: t('filter.inactive') },
+    { value: 'archived', label: t('filter.archived') },
+  ];
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -120,6 +139,32 @@ export default function FilterBar({
           <option key={c.slug} value={c.slug}>
             {locale === 'zh' ? c.nameZh : c.nameEn}
           </option>
+        ))}
+      </select>
+
+      <MultiSelect
+        options={filterOptions.licenses}
+        selected={selectedLicenses}
+        onChange={(vals) => onFilterChange({ ...currentFilters, license: vals.length > 0 ? vals.join(',') : undefined })}
+        placeholder={t('filter.allLicenses')}
+      />
+
+      <MultiSelect
+        options={filterOptions.languages}
+        selected={selectedLanguages}
+        onChange={(vals) => onFilterChange({ ...currentFilters, language: vals.length > 0 ? vals.join(',') : undefined })}
+        placeholder={t('filter.allLanguages')}
+      />
+
+      <select
+        value={currentFilters.maintenance ?? ''}
+        onChange={(e) =>
+          onFilterChange({ ...currentFilters, maintenance: (e.target.value || undefined) as ToolFilters['maintenance'] })
+        }
+        className="rounded-xl border border-[var(--border)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] outline-none focus:border-[var(--color-accent)] dark:bg-[var(--bg-tertiary)]"
+      >
+        {maintenanceOptions.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
 

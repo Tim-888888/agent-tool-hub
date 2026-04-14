@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Heart } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useI18n } from '@/lib/i18n-context';
+import { trackEvent } from '@/hooks/useAnalytics';
 
 interface FavoriteButtonProps {
   toolId: string;
@@ -44,7 +45,9 @@ export default function FavoriteButton({
 
       if (res.ok) {
         const data = await res.json();
-        setFavorited(data.data?.action === 'added');
+        const isAdded = data.data?.action === 'added';
+        setFavorited(isAdded);
+        trackEvent(isAdded ? 'favorite_add' : 'favorite_remove', { toolId });
       }
     } catch {
       // Silently fail — optimistic UI already toggled

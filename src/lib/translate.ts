@@ -1,9 +1,25 @@
+import { prisma } from "@/lib/db"
+
 const GLM_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 const DEFAULT_MODEL = "glm-4-flash"
 
 interface TranslationResult {
   descriptionZh: string | null
   featuresZh: string[]
+}
+
+/**
+ * Compute a stable hash from description + features for cache key.
+ * Uses a simple but fast hash function (djb2 variant).
+ */
+function computeSourceHash(description: string, features: string[]): string {
+  const source = description + "|||" + features.join("|||")
+  // djb2 hash
+  let h1 = 0x811c9dc5 >>> 0
+  for (let i = 0; i < source.length; i++) {
+    h1 = Math.imul(h1, 0x01000193) ^ source.charCodeAt(i)
+  }
+  return (h1 >>> 0).toString(16).padStart(8, "0")
 }
 
 export interface CollectionContentResult {
@@ -144,6 +160,7 @@ function fallbackCollectionContent(
 /**
  * Call the 智谱 GLM API to translate English text to Chinese.
  * Translates a tool description and feature list in a single call.
+ * Uses TranslationCache to avoid redundant API calls.
  */
 export async function translateToolToChinese(
   description: string,
@@ -156,6 +173,22 @@ export async function translateToolToChinese(
 
   if (!description && features.length === 0) {
     return { descriptionZh: null, featuresZh: [] }
+  }
+
+  // Check cache first
+  const sourceHash = computeSourceHash(description, features)
+  try {
+    const cached = await prisma.translationCache.findUnique({
+      where: { sourceHash },
+    })
+    if (cached) {
+      return {
+        descriptionZh: cached.descriptionZh,
+        featuresZh: cached.featuresZh,
+      }
+    }
+  } catch {
+    // Cache miss or DB error — proceed with API call
   }
 
   const featureBlock =
@@ -214,10 +247,31 @@ Rules:
     }
 
     const parsed: TranslationResult = JSON.parse(jsonMatch[0])
-    return {
+    const result: TranslationResult = {
       descriptionZh: typeof parsed.descriptionZh === "string" ? parsed.descriptionZh : null,
       featuresZh: Array.isArray(parsed.featuresZh) ? parsed.featuresZh : [],
     }
+
+    // Write to cache (fire-and-forget, don't block on failure)
+    try {
+      await prisma.translationCache.upsert({
+        where: { sourceHash },
+        update: {
+          descriptionZh: result.descriptionZh,
+          featuresZh: result.featuresZh,
+        },
+        create: {
+          sourceHash,
+          sourceText: (description || "").slice(0, 500),
+          descriptionZh: result.descriptionZh,
+          featuresZh: result.featuresZh,
+        },
+      })
+    } catch {
+      // Cache write failure is non-critical
+    }
+
+    return result
   } catch (error) {
     console.error("Translation failed:", error)
     return { descriptionZh: null, featuresZh: [] }

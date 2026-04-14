@@ -52,4 +52,7 @@ export interface ToolFilters {
   platform?: string;
   category?: string;
   page?: number;
+  license?: string;
+  language?: string;
+  maintenance?: string;
 }

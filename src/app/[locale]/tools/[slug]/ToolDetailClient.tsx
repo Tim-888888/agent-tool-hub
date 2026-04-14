@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -13,6 +14,7 @@ import ReviewSection from '@/components/tools/ReviewSection';
 import TagVoting from '@/components/tools/TagVoting';
 import { formatStars, formatDate, getToolTypeColor } from '@/lib/utils';
 import { useI18n, localePath } from '@/lib/i18n-context';
+import { trackEvent } from '@/hooks/useAnalytics';
 import type { Tool } from '@/types';
 
 interface Props {
@@ -21,6 +23,10 @@ interface Props {
 
 export default function ToolDetailClient({ tool }: Props) {
   const { locale, t } = useI18n();
+
+  useEffect(() => {
+    trackEvent('tool_view', { slug: tool.slug });
+  }, [tool.slug]);
 
   const description = locale === 'zh' && tool.descriptionZh ? tool.descriptionZh : tool.description;
   const features = locale === 'zh' && tool.featuresZh.length > 0 ? tool.featuresZh : tool.featuresEn;

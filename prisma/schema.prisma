@@ -73,6 +73,9 @@ model Tool {
   submissions   Submission[]
   tagVotes      ToolTagVote[]
   favorites     Favorite[]
+  collectionTools CollectionTool[]
+  subscriptions ToolSubscription[]
+  notifications Notification[]
 
   @@index([type, status])
   @@index([stars])
@@ -138,6 +141,8 @@ model User {
   submissions   Submission[]
   tagVotes      ToolTagVote[]
   favorites     Favorite[]
+  subscriptions ToolSubscription[]
+  notifications Notification[]
 
   @@index([email])
 }
@@ -241,6 +246,97 @@ model Favorite {
   tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
 
   @@unique([userId, toolId])
+  @@index([userId])
+  @@index([toolId])
+}
+
+model NewsletterSubscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  locale         String    @default("en")
+  active         Boolean   @default(true)
+  token          String    @unique
+  createdAt      DateTime  @default(now())
+  unsubscribedAt DateTime?
+
+  @@index([email])
+  @@index([active])
+}
+
+model TranslationCache {
+  id            String   @id @default(cuid())
+  sourceHash    String   @unique
+  sourceText    String
+  descriptionZh String?
+  featuresZh    String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([sourceHash])
+}
+
+model Collection {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  titleEn       String
+  titleZh       String
+  descriptionEn String?
+  descriptionZh String?
+  icon          String?
+  coverImage    String?
+  isPublished   Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tools         CollectionTool[]
+
+  @@index([isPublished])
+  @@index([sortOrder])
+}
+
+model CollectionTool {
+  collectionId String
+  toolId       String
+  sortOrder    Int      @default(0)
+  noteEn       String?
+  noteZh       String?
+  addedAt      DateTime @default(now())
+
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  tool         Tool       @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, toolId])
+  @@index([collectionId])
+}
+
+model ToolSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  toolId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, toolId])
+  @@index([userId])
+  @@index([toolId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  toolId    String
+  type      String   // "version_update", "new_review", "status_change"
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
   @@index([userId])
   @@index([toolId])
 }

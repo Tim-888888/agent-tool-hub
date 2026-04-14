@@ -8,7 +8,9 @@
     "about": "关于",
     "search": "搜索工具...",
     "admin": "管理",
-    "favorites": "收藏"
+    "favorites": "收藏",
+    "contributors": "贡献者",
+    "collections": "合集"
   },
   "hero": {
     "title": "发现 AI Agent 工具",
@@ -71,7 +73,13 @@
     "nameAZ": "名称排序",
     "allTypes": "所有类型",
     "allPlatforms": "所有平台",
-    "allCategories": "所有分类"
+    "allCategories": "所有分类",
+    "allLicenses": "所有许可证",
+    "allLanguages": "所有语言",
+    "allMaintenance": "所有维护状态",
+    "active": "活跃",
+    "inactive": "不活跃",
+    "archived": "已归档"
   },
   "ranking": {
     "title": "排行榜",
@@ -94,6 +102,23 @@
     "description": "发现适合你 AI 编程助手的最佳工具",
     "builtWith": "使用 Next.js 和 Prisma 构建"
   },
+  "newsletter": {
+    "title": "保持更新",
+    "description": "每周获取最新的 AI agent 工具推荐。",
+    "placeholder": "your@email.com",
+    "subscribe": "订阅",
+    "success": "订阅成功！请查看邮箱确认。",
+    "error": "订阅失败，请重试。",
+    "unsubscribed": "已成功取消订阅。",
+    "unsubscribeError": "取消订阅失败，请重试。",
+    "adminTitle": "Newsletter 订阅者",
+    "totalSubscribers": "总订阅者",
+    "active": "活跃",
+    "inactive": "不活跃",
+    "recentSubscribers": "最近订阅者",
+    "noSubscribers": "暂无订阅者。",
+    "loadError": "加载订阅者数据失败。"
+  },
   "auth": {
     "signIn": "登录",
     "signInWithGithub": "使用 GitHub 登录",
@@ -111,7 +136,8 @@
     "pending": "待审核",
     "anonymous": "匿名",
     "switchToEnglish": "切换到英文",
-    "switchToChinese": "切换到中文"
+    "switchToChinese": "切换到中文",
+    "loading": "加载中..."
   },
   "admin": {
     "submissionsTitle": "提交审核（{count} 个待处理）",
@@ -170,5 +196,36 @@
     "emptyDesc": "浏览工具并点击心形图标来收藏它们。",
     "browseTools": "浏览工具",
     "signInToFavorites": "登录后收藏工具"
+  },
+  "compare": {
+    "title": "工具对比",
+    "description": "并排对比 AI agent 工具，找到最适合你工作流的选择。",
+    "searchPlaceholder": "搜索添加工具...",
+    "empty": "搜索并添加工具以开始对比。",
+    "remove": "移除",
+    "add": "添加对比",
+    "platforms": "平台",
+    "categories": "分类"
+  },
+  "contributors": {
+    "title": "贡献者",
+    "description": "为社区提交工具的顶级贡献者",
+    "empty": "暂无贡献者。成为第一个提交工具的人！",
+    "anonymous": "匿名",
+    "lastActive": "最后活跃",
+    "approved": "已通过"
+  },
+  "collections": {
+    "title": "推荐合集",
+    "description": "精选最佳 AI agent 工具合集",
+    "empty": "暂无合集。",
+    "tools": "个工具",
+    "notFound": "合集未找到。",
+    "noTools": "该合集暂无工具。"
+  },
+  "match": {
+    "title": "找到你的最佳工具",
+    "description": "回答几个问题，我们为你推荐最适合的工具",
+    "noResults": "未找到匹配的工具，请尝试不同的偏好。"
   }
 }

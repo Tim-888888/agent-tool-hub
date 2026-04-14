@@ -10,7 +10,9 @@ const NAV_ITEMS = [
   { href: "/admin", labelKey: "dashboard", labelZh: "概览", labelEn: "Dashboard" },
   { href: "/admin/submissions", labelKey: "submissions", labelZh: "审核", labelEn: "Submissions" },
   { href: "/admin/tools", labelKey: "tools", labelZh: "工具管理", labelEn: "Tools" },
+  { href: "/admin/collections", labelKey: "collections", labelZh: "合集管理", labelEn: "Collections" },
   { href: "/admin/users", labelKey: "users", labelZh: "用户管理", labelEn: "Users" },
+  { href: "/admin/newsletter", labelKey: "newsletter", labelZh: "Newsletter", labelEn: "Newsletter" },
 ];
 
 export default function AdminLayout({

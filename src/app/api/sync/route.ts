@@ -7,6 +7,7 @@ import { withRetry } from "@/lib/retry";
 import { computeScore } from "@/lib/scoring";
 import { requireAuth, isAdmin } from "@/lib/auth-helpers";
 import { revalidatePath } from "next/cache";
+import { translateToolToChinese } from "@/lib/translate";
 
 export const dynamic = "force-dynamic";
 
@@ -113,7 +114,7 @@ export async function GET(request: Request) {
         // Do NOT overwrite hand-crafted structured data (installGuide, featuresZh).
         const existing = await prisma.tool.findUnique({
           where: { id: tool.id },
-          select: { installGuide: true, featuresEn: true, featuresZh: true },
+          select: { installGuide: true, featuresEn: true, featuresZh: true, version: true, status: true, lastCommitAt: true },
         });
 
         // Build update payload: only sync-enriched fields
@@ -149,6 +150,49 @@ export async function GET(request: Request) {
           where: { id: tool.id },
           data: updateData,
         });
+
+        // Notify subscribers on new commits (fire-and-forget)
+        const oldCommitAt = existing?.lastCommitAt;
+        const newCommitAt = new Date(repoData.pushed_at);
+
+        if (oldCommitAt && newCommitAt > oldCommitAt) {
+          prisma.toolSubscription.findMany({
+            where: { toolId: tool.id },
+            select: { userId: true },
+          }).then((subs) => {
+            if (subs.length === 0) return;
+            prisma.notification.createMany({
+              data: subs.map((s) => ({
+                userId: s.userId,
+                toolId: tool.id,
+                type: "version_update",
+                title: `${tool.name} updated`,
+                message: `${tool.name} has new commits since last sync`,
+              })),
+            }).catch(() => {});
+          }).catch(() => {});
+        }
+
+        // Translate to Chinese if descriptionZh is missing (fire-and-forget)
+        if (!existing?.featuresZh?.length) {
+          const currentDesc = (updateData.description as string) || "";
+          const currentFeatures = (updateData.featuresEn as string[]) || [];
+          if (currentDesc || currentFeatures.length > 0) {
+            translateToolToChinese(currentDesc, currentFeatures)
+              .then(async (translation) => {
+                if (translation.descriptionZh || translation.featuresZh.length > 0) {
+                  await prisma.tool.update({
+                    where: { id: tool.id },
+                    data: {
+                      ...(translation.descriptionZh ? { descriptionZh: translation.descriptionZh } : {}),
+                      ...(translation.featuresZh.length > 0 ? { featuresZh: translation.featuresZh } : {}),
+                    },
+                  });
+                }
+              })
+              .catch(() => {}); // Non-critical
+          }
+        }
 
         results.push({ tool: tool.name, status: "success" });
       } catch (error) {
@@ -275,6 +319,28 @@ export async function POST() {
         }
 
         await prisma.tool.update({ where: { id: tool.id }, data: updateData });
+
+        // Translate to Chinese if descriptionZh is missing (fire-and-forget)
+        if (!existing?.featuresZh?.length) {
+          const currentDesc = (updateData.description as string) || "";
+          const currentFeatures = (updateData.featuresEn as string[]) || [];
+          if (currentDesc || currentFeatures.length > 0) {
+            translateToolToChinese(currentDesc, currentFeatures)
+              .then(async (translation) => {
+                if (translation.descriptionZh || translation.featuresZh.length > 0) {
+                  await prisma.tool.update({
+                    where: { id: tool.id },
+                    data: {
+                      ...(translation.descriptionZh ? { descriptionZh: translation.descriptionZh } : {}),
+                      ...(translation.featuresZh.length > 0 ? { featuresZh: translation.featuresZh } : {}),
+                    },
+                  });
+                }
+              })
+              .catch(() => {});
+          }
+        }
+
         results.push({ tool: tool.name, status: "success" });
       } catch (error) {
         results.push({
