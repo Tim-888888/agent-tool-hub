@@ -1,0 +1,79 @@
+import { successResponse, errorResponse } from "@/lib/api-utils";
+import { requireAuth, isAdmin } from "@/lib/auth-helpers";
+import { runSkillsShDiscovery } from "@/lib/skills-sh-scraper";
+
+export const dynamic = "force-dynamic";
+
+const CRON_SECRET = process.env.CRON_SECRET;
+
+/**
+ * GET /api/skills-sh — triggered by Vercel Cron (daily)
+ * Scrapes skills.sh for new skills and creates PENDING tools.
+ */
+export async function GET(request: Request): Promise<Response> {
+  if (CRON_SECRET) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader !== `Bearer ${CRON_SECRET}`) {
+      return errorResponse("Unauthorized", 401);
+    }
+  } else {
+    const userAgent = request.headers.get("user-agent") ?? "";
+    if (!userAgent.includes("vercel-cron")) {
+      return errorResponse("Unauthorized", 401);
+    }
+  }
+
+  try {
+    const result = await runSkillsShDiscovery();
+
+    console.log(
+      JSON.stringify({
+        event: "skills_sh_scrape_complete",
+        trigger: "cron",
+        discovered: result.discovered,
+        created: result.created,
+        skipped: result.skipped,
+        errors: result.errors.length,
+      }),
+    );
+
+    return successResponse(result);
+  } catch (error) {
+    console.error("skills.sh scrape fatal error:", error);
+    return errorResponse("skills.sh scrape failed", 500);
+  }
+}
+
+/**
+ * POST /api/skills-sh — admin manual trigger
+ * Preview mode: GET /api/skills-sh?preview=true returns stats without creating tools.
+ */
+export async function POST(request: Request): Promise<Response> {
+  const { session, error } = await requireAuth();
+  if (error) return error;
+
+  const userId = session!.user!.id as string;
+  if (!isAdmin(userId)) {
+    return errorResponse("Forbidden", 403);
+  }
+
+  try {
+    const result = await runSkillsShDiscovery();
+
+    console.log(
+      JSON.stringify({
+        event: "skills_sh_scrape_complete",
+        trigger: "manual",
+        discovered: result.discovered,
+        created: result.created,
+        skipped: result.skipped,
+        errors: result.errors.length,
+      }),
+    );
+
+    return successResponse(result);
+  } catch (error) {
+    console.error("skills.sh scrape fatal error:", error);
+    return errorResponse("skills.sh scrape failed", 500);
+  }
+}
