@@ -54,7 +54,7 @@ const SEARCH_QUERIES = [
 ];
 
 const MAX_RESULTS_PER_QUERY = 500;
-const MAX_TOOLS_PER_RUN = 100;
+const MAX_TOOLS_PER_RUN = 200;
 
 /**
  * Search skills.sh for skills matching a query.
