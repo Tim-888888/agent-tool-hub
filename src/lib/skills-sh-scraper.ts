@@ -138,44 +138,45 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
   // Fetch all skills from skills.sh
   const allSkills = await fetchAllSkillsSh();
 
+  // Filter out skills we already have
+  const newSkills = allSkills.filter((skill) => {
+    const slug = generateSkillSlug(skill);
+    return !existingSlugs.has(slug);
+  });
+
+  // Prepare batch data
+  const BATCH_CHUNK = 500;
   let created = 0;
-  let skipped = 0;
+  let skipped = allSkills.length - newSkills.length;
 
-  for (const skill of allSkills) {
-    try {
-      const repoUrl = `https://github.com/${skill.source}`;
+  for (let i = 0; i < newSkills.length; i += BATCH_CHUNK) {
+    const chunk = newSkills.slice(i, i + BATCH_CHUNK);
+    const tools = chunk.map((skill) => {
       const slug = generateSkillSlug(skill);
-
-      // Skip if we already have this exact skill
-      if (existingSlugs.has(slug)) { skipped++; continue; }
-
-      // Score based on installs (higher installs = higher score)
       const score = Math.min(100, Math.round(Math.log10(Math.max(1, skill.installs)) * 15));
+      return {
+        slug,
+        name: skill.name || skill.skillId,
+        description: `${skill.name} — a Claude Code skill from ${skill.source}`,
+        repoUrl: `https://github.com/${skill.source}`,
+        type: 'SKILL' as const,
+        status: 'PENDING' as const,
+        stars: skill.installs,
+        forks: 0,
+        score,
+      };
+    });
 
-      await prisma.tool.create({
-        data: {
-          slug,
-          name: skill.name || skill.skillId,
-          description: `${skill.name} — a Claude Code skill from ${skill.source}`,
-          repoUrl,
-          type: 'SKILL',
-          status: 'PENDING',
-          stars: skill.installs,
-          forks: 0,
-          score,
-        },
+    try {
+      const result = await prisma.tool.createMany({
+        data: tools,
+        skipDuplicates: true,
       });
-
-      existingSlugs.add(slug);
-      created++;
+      created += result.count;
     } catch (error) {
-      // Skip duplicate slug errors silently
-      const msg = error instanceof Error ? error.message : String(error);
-      if (!msg.includes('Unique constraint')) {
-        errors.push(`Create ${skill.id}: ${msg}`);
-      } else {
-        skipped++;
-      }
+      errors.push(
+        `Batch ${Math.floor(i / BATCH_CHUNK)}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -185,12 +186,12 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
     update: {
       lastSyncAt: new Date(),
       totalRepos: allSkills.length,
-      syncedRepos: existingSlugs.size,
+      syncedRepos: existingSlugs.size + created,
     },
     create: {
       id: 'default',
       totalRepos: allSkills.length,
-      syncedRepos: existingSlugs.size,
+      syncedRepos: existingSlugs.size + created,
     },
   });
 
