@@ -27,6 +27,9 @@
     "src/app/api/skills-sh/route.ts": {
       "maxDuration": 300
     },
+    "src/app/api/skills-sh/activate/route.ts": {
+      "maxDuration": 60
+    },
     "src/app/api/skills-sh/enrich/route.ts": {
       "maxDuration": 300
     }

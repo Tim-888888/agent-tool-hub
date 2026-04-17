@@ -2,21 +2,17 @@
  * Skills.sh scraper module.
  *
  * Fetches skill data from Vercel's skills.sh directory via the public /api/search
- * endpoint, enriches with GitHub repo data, and creates PENDING tools in the database.
+ * endpoint and creates PENDING tools in the database.
  *
  * Design:
  * - Uses /api/search?q={query}&limit={n} to enumerate skills
- * - Two-phase approach: Phase A (collect) creates PENDING tools fast, Phase B (enrich) adds translations
- * - Searches with 2-char broad queries + topic queries to maximize coverage
- * - Deduplicates by skill source (owner/repo)
- * - Skips repos already in the database or with pending submissions
+ * - Each skill gets its own tool entry (one per skill, not per repo)
+ * - Fast import: no GitHub API calls during collection, just stores skill data
+ * - GitHub enrichment + GLM translation done in Phase B via /api/skills-sh/enrich
  * - Rate limits: 30 requests/min to skills.sh, batch with 2.5s delays
  */
 
 import { prisma } from '@/lib/db';
-import { fetchRepoData } from '@/lib/github-client';
-import { computeScore } from '@/lib/scoring';
-import { withRetry } from '@/lib/retry';
 
 const SKILLS_SH_BASE = process.env.SKILLS_SH_BASE || 'https://skills.sh';
 
@@ -54,7 +50,6 @@ const SEARCH_QUERIES = [
 ];
 
 const MAX_RESULTS_PER_QUERY = 500;
-const MAX_TOOLS_PER_RUN = 200;
 
 /**
  * Search skills.sh for skills matching a query.
@@ -124,42 +119,65 @@ export async function fetchAllSkillsSh(): Promise<SkillsShSkill[]> {
 }
 
 /**
- * Full discovery pipeline: fetch from skills.sh → deduplicate against DB →
- * create PENDING tools with basic GitHub data (no translation).
- * Translation/enrichment is done in Phase B via the enrich cron.
+ * Fast import pipeline: fetch from skills.sh → deduplicate against DB →
+ * create PENDING tools with skill data only (no GitHub, no GLM).
+ * Each skill gets its own tool entry.
+ * GitHub enrichment + translation done in Phase B via /api/skills-sh/enrich.
  */
 export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
   const errors: string[] = [];
 
-  // Get existing tool repo URLs to skip duplicates
-  const existingUrls = new Set(
-    (await prisma.tool.findMany({ select: { repoUrl: true } }))
-      .map((t) => t.repoUrl),
+  // Get existing skill IDs to skip exact duplicates
+  const existingSlugs = new Set(
+    (await prisma.tool.findMany({
+      where: { type: 'SKILL' },
+      select: { slug: true },
+    })).map((t) => t.slug),
   );
-
-  // Also skip repos with pending submissions
-  const pendingUrls = new Set(
-    (await prisma.submission.findMany({
-      where: { status: 'PENDING' },
-      select: { repoUrl: true },
-    }))
-      .map((s) => s.repoUrl),
-  );
-
-  const knownUrls = new Set([...existingUrls, ...pendingUrls]);
 
   // Fetch all skills from skills.sh
   const allSkills = await fetchAllSkillsSh();
 
-  // Filter out skills whose source repo is already known
-  const newSkills = allSkills.filter((skill) => {
-    const repoUrl = `https://github.com/${skill.source}`;
-    return !knownUrls.has(repoUrl);
-  });
-
   let created = 0;
   let skipped = 0;
-  const seenRepos = new Set<string>();
+
+  for (const skill of allSkills) {
+    try {
+      const repoUrl = `https://github.com/${skill.source}`;
+      const slug = generateSkillSlug(skill);
+
+      // Skip if we already have this exact skill
+      if (existingSlugs.has(slug)) { skipped++; continue; }
+
+      // Score based on installs (higher installs = higher score)
+      const score = Math.min(100, Math.round(Math.log10(Math.max(1, skill.installs)) * 15));
+
+      await prisma.tool.create({
+        data: {
+          slug,
+          name: skill.name || skill.skillId,
+          description: `${skill.name} — a Claude Code skill from ${skill.source}`,
+          repoUrl,
+          type: 'SKILL',
+          status: 'PENDING',
+          stars: skill.installs,
+          forks: 0,
+          score,
+        },
+      });
+
+      existingSlugs.add(slug);
+      created++;
+    } catch (error) {
+      // Skip duplicate slug errors silently
+      const msg = error instanceof Error ? error.message : String(error);
+      if (!msg.includes('Unique constraint')) {
+        errors.push(`Create ${skill.id}: ${msg}`);
+      } else {
+        skipped++;
+      }
+    }
+  }
 
   // Update sync state
   await prisma.skillSyncState.upsert({
@@ -167,87 +185,13 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
     update: {
       lastSyncAt: new Date(),
       totalRepos: allSkills.length,
-      syncedRepos: existingUrls.size + created,
+      syncedRepos: existingSlugs.size,
     },
     create: {
       id: 'default',
       totalRepos: allSkills.length,
-      syncedRepos: 0,
+      syncedRepos: existingSlugs.size,
     },
-  });
-
-  for (const skill of newSkills.slice(0, MAX_TOOLS_PER_RUN)) {
-    try {
-      const repoUrl = `https://github.com/${skill.source}`;
-      const [owner, repo] = skill.source.split('/');
-
-      // Skip if we already processed this repo (one tool per repo)
-      if (seenRepos.has(skill.source)) { skipped++; continue; }
-      seenRepos.add(skill.source);
-
-      // Enrich with GitHub data (basic only, no translation)
-      let stars = 0;
-      let forks = 0;
-      let language: string | null = null;
-      let license: string | null = null;
-      let description = '';
-      let pushedAt: Date | null = null;
-
-      try {
-        const repoData = await withRetry(() => fetchRepoData(owner, repo));
-        stars = repoData.stargazers_count;
-        forks = repoData.forks_count;
-        language = repoData.language;
-        license = repoData.license?.key ?? null;
-        description = repoData.description || skill.name;
-        pushedAt = new Date(repoData.pushed_at);
-      } catch {
-        errors.push(`GitHub fetch failed for ${skill.source}, skipping`);
-        continue;
-      }
-
-      // Generate slug from source repo
-      const slug = generateSlug(owner, repo);
-
-      // Skip if slug already exists
-      const existingSlug = await prisma.tool.findUnique({ where: { slug } });
-      if (existingSlug) { skipped++; continue; }
-
-      const score = computeScore({
-        stars,
-        forks,
-        lastCommitAt: pushedAt,
-        npmDownloads: null,
-      });
-
-      await prisma.tool.create({
-        data: {
-          slug,
-          name: repo || skill.name,
-          description,
-          repoUrl,
-          type: 'SKILL',
-          status: 'PENDING',
-          stars,
-          forks,
-          language,
-          license,
-          score,
-        },
-      });
-
-      created++;
-    } catch (error) {
-      errors.push(
-        `Create ${skill.source}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
-
-  // Update synced count after creation
-  await prisma.skillSyncState.update({
-    where: { id: 'default' },
-    data: { syncedRepos: existingUrls.size + created },
   });
 
   return {
@@ -260,20 +204,15 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
 }
 
 /**
- * Generate a URL-safe slug from owner and repo name.
- * Prefixes with "skill-" to distinguish from other tool types.
+ * Generate a URL-safe slug from skill data.
+ * Uses the full skill ID path to ensure uniqueness.
  */
-function generateSlug(owner: string, repo: string): string {
-  let slug = repo
+function generateSkillSlug(skill: SkillsShSkill): string {
+  // Use skill.id (owner/repo/skill-name) for uniqueness
+  const slug = skill.id
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
-
-  // Prefix with owner if slug is too generic
-  const genericNames = ['server', 'mcp-server', 'mcp', 'client', 'sdk', 'skills', 'agent-skills'];
-  if (genericNames.includes(slug)) {
-    slug = `${owner.toLowerCase()}-${slug}`;
-  }
 
   return `skill-${slug}`;
 }

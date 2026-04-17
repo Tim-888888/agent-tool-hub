@@ -1,11 +1,10 @@
 /**
- * TDD tests for skills.sh scraper module.
+ * Tests for skills.sh scraper module.
  *
  * Tests the following:
  * 1. searchSkillsSh() - API call to /api/search
  * 2. fetchAllSkillsSh() - enumerate skills via multiple search queries + dedup
- * 3. runSkillsShDiscovery() - full pipeline: fetch → deduplicate → create PENDING
- * 4. Dedup logic against existing tools and submissions
+ * 3. runSkillsShDiscovery() - full pipeline: fetch → deduplicate → create PENDING (fast, no GitHub)
  */
 
 // Mock fetch globally
@@ -19,7 +18,6 @@ jest.mock('@/lib/db', () => ({
       findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
-      update: jest.fn(),
     },
     submission: {
       findMany: jest.fn(),
@@ -31,18 +29,7 @@ jest.mock('@/lib/db', () => ({
   },
 }));
 
-// Mock github-client
-jest.mock('@/lib/github-client', () => ({
-  fetchRepoData: jest.fn(),
-}));
-
-// Mock scoring
-jest.mock('@/lib/scoring', () => ({
-  computeScore: jest.fn().mockReturnValue(42),
-}));
-
 import { prisma } from '@/lib/db';
-import { fetchRepoData } from '@/lib/github-client';
 import {
   searchSkillsSh,
   fetchAllSkillsSh,
@@ -50,7 +37,6 @@ import {
 } from '@/lib/skills-sh-scraper';
 
 const mockPrisma = prisma as jest.Mocked<typeof prisma>;
-const mockFetchRepoData = fetchRepoData as jest.MockedFunction<typeof fetchRepoData>;
 
 // Sample skills.sh API response
 const mockSkillSearchResponse = {
@@ -74,17 +60,6 @@ const mockSkillSearchResponse = {
   ],
   count: 2,
   duration_ms: 50,
-};
-
-const mockGitHubRepoData = {
-  stargazers_count: 1500,
-  forks_count: 120,
-  open_issues_count: 15,
-  pushed_at: '2026-04-10T00:00:00Z',
-  description: 'Best practices for React development with Claude Code',
-  topics: ['react', 'claude', 'skills'],
-  license: { key: 'mit', name: 'MIT License' },
-  language: 'TypeScript',
 };
 
 beforeEach(() => {
@@ -135,7 +110,6 @@ describe('searchSkillsSh', () => {
 
 describe('fetchAllSkillsSh', () => {
   it('should search with multiple queries and deduplicate results', async () => {
-    // Mock two different search responses
     const response1 = {
       ok: true,
       json: async () => ({
@@ -186,7 +160,6 @@ describe('fetchAllSkillsSh', () => {
 
     const results = await fetchAllSkillsSh();
 
-    // skill-a appears in both queries but should be deduplicated
     expect(results).toHaveLength(3);
     const ids = results.map((s) => s.id);
     expect(ids).toContain('owner/repo-a/skill-a');
@@ -211,60 +184,42 @@ describe('fetchAllSkillsSh', () => {
 });
 
 describe('runSkillsShDiscovery', () => {
-  it('should skip tools that already exist in database', async () => {
-    // Mock existing tools
-    (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([
-      { repoUrl: 'https://github.com/owner/repo-a' },
-    ]);
-    // Mock pending submissions
-    (mockPrisma.submission.findMany as jest.Mock).mockResolvedValueOnce([]);
+  it('should create one tool per skill (not per repo)', async () => {
+    (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
 
-    // Mock fetchAllSkillsSh (we test it separately, mock it here)
+    // Two skills from the same repo
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         skills: [
           {
-            id: 'owner/repo-a/existing-skill',
-            skillId: 'existing-skill',
-            name: 'existing-skill',
-            installs: 1000,
-            source: 'owner/repo-a',
+            id: 'owner/repo-x/skill-x1',
+            skillId: 'skill-x1',
+            name: 'skill-x1',
+            installs: 2000,
+            source: 'owner/repo-x',
           },
           {
-            id: 'owner/repo-new/new-skill',
-            skillId: 'new-skill',
-            name: 'new-skill',
-            installs: 500,
-            source: 'owner/repo-new',
+            id: 'owner/repo-x/skill-x2',
+            skillId: 'skill-x2',
+            name: 'skill-x2',
+            installs: 1000,
+            source: 'owner/repo-x',
           },
         ],
       }),
     });
 
-    // Mock GitHub enrichment
-    mockFetchRepoData.mockResolvedValueOnce({
-      ...mockGitHubRepoData,
-      stargazers_count: 50,
-      forks_count: 10,
-    });
-
-    // Mock slug uniqueness check
-    (mockPrisma.tool.findUnique as jest.Mock).mockResolvedValue(null);
-    // Mock create
-    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
-
     const result = await runSkillsShDiscovery();
 
-    // owner/repo-a was filtered before newSkills, so discovered=2 but only 1 was new
-    expect(result.discovered).toBeGreaterThanOrEqual(2);
-    // owner/repo-new should be created
-    expect(result.created).toBeGreaterThanOrEqual(1);
+    // Both skills should be created (one per skill, not one per repo)
+    expect(result.created).toBeGreaterThanOrEqual(2);
   });
 
   it('should create tools with type=SKILL and status=PENDING', async () => {
     (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
-    (mockPrisma.submission.findMany as jest.Mock).mockResolvedValueOnce([]);
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
 
     mockFetch.mockResolvedValue({
       ok: true,
@@ -281,15 +236,6 @@ describe('runSkillsShDiscovery', () => {
       }),
     });
 
-    mockFetchRepoData.mockResolvedValueOnce({
-      ...mockGitHubRepoData,
-      stargazers_count: 200,
-      forks_count: 30,
-    });
-
-    (mockPrisma.tool.findUnique as jest.Mock).mockResolvedValue(null);
-    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
-
     await runSkillsShDiscovery();
 
     expect(mockPrisma.tool.create).toHaveBeenCalledWith(
@@ -302,72 +248,71 @@ describe('runSkillsShDiscovery', () => {
     );
   });
 
-  it('should skip repos that fail GitHub enrichment', async () => {
-    (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
-    (mockPrisma.submission.findMany as jest.Mock).mockResolvedValueOnce([]);
+  it('should skip tools whose slug already exists', async () => {
+    (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([
+      { slug: 'skill-owner-repo-x-skill-x' },
+    ]);
 
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         skills: [
           {
-            id: 'owner/bad-repo/bad-skill',
-            skillId: 'bad-skill',
-            name: 'bad-skill',
-            installs: 100,
-            source: 'owner/bad-repo',
+            id: 'owner/repo-x/skill-x',
+            skillId: 'skill-x',
+            name: 'skill-x',
+            installs: 2000,
+            source: 'owner/repo-x',
           },
         ],
       }),
     });
-
-    // GitHub API fails for this repo
-    mockFetchRepoData.mockRejectedValueOnce(new Error('Not found'));
 
     const result = await runSkillsShDiscovery();
 
+    expect(result.skipped).toBeGreaterThanOrEqual(1);
     expect(result.created).toBe(0);
-    expect(result.errors.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('should use installs as a quality signal in scoring', async () => {
+  it('should generate unique slugs per skill', async () => {
     (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
-    (mockPrisma.submission.findMany as jest.Mock).mockResolvedValueOnce([]);
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
 
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         skills: [
           {
-            id: 'owner/popular/popular-skill',
-            skillId: 'popular-skill',
-            name: 'popular-skill',
-            installs: 50000,
-            source: 'owner/popular',
+            id: 'owner/repo/skill-a',
+            skillId: 'skill-a',
+            name: 'skill-a',
+            installs: 100,
+            source: 'owner/repo',
+          },
+          {
+            id: 'owner/repo/skill-b',
+            skillId: 'skill-b',
+            name: 'skill-b',
+            installs: 50,
+            source: 'owner/repo',
           },
         ],
       }),
     });
 
-    mockFetchRepoData.mockResolvedValueOnce({
-      ...mockGitHubRepoData,
-      stargazers_count: 300,
-      forks_count: 50,
-    });
-
-    (mockPrisma.tool.findUnique as jest.Mock).mockResolvedValue(null);
-    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
-
     await runSkillsShDiscovery();
 
-    const createCall = (mockPrisma.tool.create as jest.Mock).mock.calls[0][0];
-    // Score comes from computeScore mock (42)
-    expect(createCall.data.score).toBe(42);
+    const createCalls = (mockPrisma.tool.create as jest.Mock).mock.calls;
+    const slugs = createCalls.map((c: any) => c[0].data.slug);
+    expect(slugs).toContain('skill-owner-repo-skill-a');
+    expect(slugs).toContain('skill-owner-repo-skill-b');
+    // All slugs should be unique
+    expect(new Set(slugs).size).toBe(slugs.length);
   });
 
   it('should update SkillSyncState after discovery', async () => {
     (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
-    (mockPrisma.submission.findMany as jest.Mock).mockResolvedValueOnce([]);
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
 
     mockFetch.mockResolvedValue({
       ok: true,
@@ -384,13 +329,36 @@ describe('runSkillsShDiscovery', () => {
       }),
     });
 
-    mockFetchRepoData.mockResolvedValueOnce(mockGitHubRepoData);
-    (mockPrisma.tool.findUnique as jest.Mock).mockResolvedValue(null);
-    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
-
     await runSkillsShDiscovery();
 
     expect(mockPrisma.skillSyncState.upsert).toHaveBeenCalled();
-    expect(mockPrisma.skillSyncState.update).toHaveBeenCalled();
+  });
+
+  it('should use installs for scoring', async () => {
+    (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        skills: [
+          {
+            id: 'owner/popular/popular-skill',
+            skillId: 'popular-skill',
+            name: 'popular-skill',
+            installs: 50000,
+            source: 'owner/popular',
+          },
+        ],
+      }),
+    });
+
+    await runSkillsShDiscovery();
+
+    const createCall = (mockPrisma.tool.create as jest.Mock).mock.calls[0][0];
+    // High installs should produce a reasonable score
+    expect(createCall.data.score).toBeGreaterThan(0);
+    // Score based on log10(50000) * 15 ≈ 71
+    expect(createCall.data.score).toBeLessThanOrEqual(100);
   });
 });
