@@ -1,5 +1,4 @@
 import { successResponse, errorResponse } from "@/lib/api-utils";
-import { requireAuth, isAdmin } from "@/lib/auth-helpers";
 import { runSkillsShDiscovery } from "@/lib/skills-sh-scraper";
 
 export const dynamic = "force-dynamic";
@@ -7,8 +6,9 @@ export const dynamic = "force-dynamic";
 const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
- * GET /api/skills-sh — triggered by Vercel Cron (daily)
- * Scrapes skills.sh for new skills and creates PENDING tools.
+ * GET /api/skills-sh — triggered by Vercel Cron (daily 4AM UTC)
+ * Phase A: Collects skills from skills.sh and creates PENDING tools.
+ * No GLM calls — translation is done in Phase B (/api/skills-sh/enrich).
  */
 export async function GET(request: Request): Promise<Response> {
   if (CRON_SECRET) {
@@ -46,9 +46,10 @@ export async function GET(request: Request): Promise<Response> {
 
 /**
  * POST /api/skills-sh — admin manual trigger
- * Preview mode: GET /api/skills-sh?preview=true returns stats without creating tools.
+ * Requires authenticated admin session.
  */
 export async function POST(request: Request): Promise<Response> {
+  const { requireAuth, isAdmin } = await import("@/lib/auth-helpers");
   const { session, error } = await requireAuth();
   if (error) return error;
 

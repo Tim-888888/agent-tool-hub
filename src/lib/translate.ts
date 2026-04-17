@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/db"
+import { ConcurrencyLimiter } from "@/lib/rate-limiter"
 
 const GLM_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 const DEFAULT_MODEL = "glm-4-flash"
+
+/** Module-level singleton: all GLM calls share this limiter (max concurrency = 2). */
+const glmLimiter = new ConcurrencyLimiter(2)
 
 interface TranslationResult {
   descriptionZh: string | null
@@ -83,54 +87,56 @@ GitHub URL: ${repoUrl}
 Description: ${description}
 ${readmeSnippet ? `README excerpt:\n${readmeSnippet}` : "No README available."}`
 
-  try {
-    const response = await fetch(GLM_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-        temperature: 0.4,
-      }),
-    })
+  return glmLimiter.run(async () => {
+    try {
+      const response = await fetch(GLM_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: DEFAULT_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+          temperature: 0.4,
+        }),
+      })
 
-    if (!response.ok) {
+      if (!response.ok) {
+        return fallbackCollectionContent(repoName, description, repoUrl)
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content as string | undefined
+      if (!content) {
+        return fallbackCollectionContent(repoName, description, repoUrl)
+      }
+
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        return fallbackCollectionContent(repoName, description, repoUrl)
+      }
+
+      const parsed = JSON.parse(jsonMatch[0])
+      return {
+        featuresEn: Array.isArray(parsed.featuresEn) ? parsed.featuresEn : [],
+        featuresZh: Array.isArray(parsed.featuresZh) ? parsed.featuresZh : [],
+        installGuideEn:
+          typeof parsed.installGuideEn === "string"
+            ? parsed.installGuideEn
+            : `Browse the [GitHub repository](${repoUrl}) for the full list of tools and their individual installation instructions.`,
+        installGuideZh:
+          typeof parsed.installGuideZh === "string"
+            ? parsed.installGuideZh
+            : `浏览 [GitHub 仓库](${repoUrl}) 查看完整工具列表和各工具的安装说明。`,
+      }
+    } catch {
       return fallbackCollectionContent(repoName, description, repoUrl)
     }
-
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content as string | undefined
-    if (!content) {
-      return fallbackCollectionContent(repoName, description, repoUrl)
-    }
-
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return fallbackCollectionContent(repoName, description, repoUrl)
-    }
-
-    const parsed = JSON.parse(jsonMatch[0])
-    return {
-      featuresEn: Array.isArray(parsed.featuresEn) ? parsed.featuresEn : [],
-      featuresZh: Array.isArray(parsed.featuresZh) ? parsed.featuresZh : [],
-      installGuideEn:
-        typeof parsed.installGuideEn === "string"
-          ? parsed.installGuideEn
-          : `Browse the [GitHub repository](${repoUrl}) for the full list of tools and their individual installation instructions.`,
-      installGuideZh:
-        typeof parsed.installGuideZh === "string"
-          ? parsed.installGuideZh
-          : `浏览 [GitHub 仓库](${repoUrl}) 查看完整工具列表和各工具的安装说明。`,
-    }
-  } catch {
-    return fallbackCollectionContent(repoName, description, repoUrl)
-  }
+  })
 }
 
 function fallbackCollectionContent(
@@ -211,71 +217,73 @@ Rules:
   - "featuresZh": array of translated feature strings (empty array if no features provided)
 - Do NOT include any text outside the JSON object`
 
-  try {
-    const response = await fetch(GLM_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-        temperature: 0.3,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error(`GLM API error: ${response.status} ${errorText}`)
-      return { descriptionZh: null, featuresZh: [] }
-    }
-
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content as string | undefined
-    if (!content) {
-      return { descriptionZh: null, featuresZh: [] }
-    }
-
-    // Extract JSON from response (handle markdown code blocks)
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return { descriptionZh: null, featuresZh: [] }
-    }
-
-    const parsed: TranslationResult = JSON.parse(jsonMatch[0])
-    const result: TranslationResult = {
-      descriptionZh: typeof parsed.descriptionZh === "string" ? parsed.descriptionZh : null,
-      featuresZh: Array.isArray(parsed.featuresZh) ? parsed.featuresZh : [],
-    }
-
-    // Write to cache (fire-and-forget, don't block on failure)
+  return glmLimiter.run(async () => {
     try {
-      await prisma.translationCache.upsert({
-        where: { sourceHash },
-        update: {
-          descriptionZh: result.descriptionZh,
-          featuresZh: result.featuresZh,
+      const response = await fetch(GLM_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
         },
-        create: {
-          sourceHash,
-          sourceText: (description || "").slice(0, 500),
-          descriptionZh: result.descriptionZh,
-          featuresZh: result.featuresZh,
-        },
+        body: JSON.stringify({
+          model: DEFAULT_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+          temperature: 0.3,
+        }),
       })
-    } catch {
-      // Cache write failure is non-critical
-    }
 
-    return result
-  } catch (error) {
-    console.error("Translation failed:", error)
-    return { descriptionZh: null, featuresZh: [] }
-  }
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`GLM API error: ${response.status} ${errorText}`)
+        return { descriptionZh: null, featuresZh: [] }
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content as string | undefined
+      if (!content) {
+        return { descriptionZh: null, featuresZh: [] }
+      }
+
+      // Extract JSON from response (handle markdown code blocks)
+      const jsonMatch = content.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        return { descriptionZh: null, featuresZh: [] }
+      }
+
+      const parsed: TranslationResult = JSON.parse(jsonMatch[0])
+      const result: TranslationResult = {
+        descriptionZh: typeof parsed.descriptionZh === "string" ? parsed.descriptionZh : null,
+        featuresZh: Array.isArray(parsed.featuresZh) ? parsed.featuresZh : [],
+      }
+
+      // Write to cache (fire-and-forget, don't block on failure)
+      try {
+        await prisma.translationCache.upsert({
+          where: { sourceHash },
+          update: {
+            descriptionZh: result.descriptionZh,
+            featuresZh: result.featuresZh,
+          },
+          create: {
+            sourceHash,
+            sourceText: (description || "").slice(0, 500),
+            descriptionZh: result.descriptionZh,
+            featuresZh: result.featuresZh,
+          },
+        })
+      } catch {
+        // Cache write failure is non-critical
+      }
+
+      return result
+    } catch (error) {
+      console.error("Translation failed:", error)
+      return { descriptionZh: null, featuresZh: [] }
+    }
+  })
 }
 
 /**
@@ -304,36 +312,38 @@ Rules:
 - Keep inline code (\`code\`) content unchanged
 - Return ONLY the translated markdown text, no JSON wrapper, no extra commentary`
 
-  try {
-    const response = await fetch(GLM_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: markdownEn },
-        ],
-        temperature: 0.3,
-      }),
-    })
+  return glmLimiter.run(async () => {
+    try {
+      const response = await fetch(GLM_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: DEFAULT_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: markdownEn },
+          ],
+          temperature: 0.3,
+        }),
+      })
 
-    if (!response.ok) return null
+      if (!response.ok) return null
 
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content as string | undefined
-    if (!content) return null
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content as string | undefined
+      if (!content) return null
 
-    // Strip markdown code block wrapper if present
-    const stripped = content.replace(/^```(?:markdown|md)?\s*\n?/i, "").replace(/\n?```\s*$/i, "")
-    return stripped.trim()
-  } catch (error) {
-    console.error("Install guide translation failed:", error)
-    return null
-  }
+      // Strip markdown code block wrapper if present
+      const stripped = content.replace(/^```(?:markdown|md)?\s*\n?/i, "").replace(/\n?```\s*$/i, "")
+      return stripped.trim()
+    } catch (error) {
+      console.error("Install guide translation failed:", error)
+      return null
+    }
+  })
 }
 
 /**
@@ -375,35 +385,37 @@ Rules:
 Description: ${description}
 ${readmeSnippet ? `README excerpt: ${readmeSnippet}` : ""}`
 
-  try {
-    const response = await fetch(GLM_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: DEFAULT_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-        temperature: 0.1,
-      }),
-    })
+  return glmLimiter.run(async () => {
+    try {
+      const response = await fetch(GLM_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: DEFAULT_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+          temperature: 0.1,
+        }),
+      })
 
-    if (!response.ok) return []
+      if (!response.ok) return []
 
-    const data = await response.json()
-    const content = data.choices?.[0]?.message?.content as string | undefined
-    if (!content) return []
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content as string | undefined
+      if (!content) return []
 
-    const match = content.match(/\[[\s\S]*\]/)
-    if (!match) return []
+      const match = content.match(/\[[\s\S]*\]/)
+      if (!match) return []
 
-    const parsed = JSON.parse(match[0])
-    return Array.isArray(parsed) ? parsed.slice(0, 2).filter((s: unknown) => typeof s === "string") : []
-  } catch {
-    return []
-  }
+      const parsed = JSON.parse(match[0])
+      return Array.isArray(parsed) ? parsed.slice(0, 2).filter((s: unknown) => typeof s === "string") : []
+    } catch {
+      return []
+    }
+  })
 }

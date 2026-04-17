@@ -10,7 +10,8 @@
     "admin": "Admin",
     "favorites": "Favorites",
     "contributors": "Contributors",
-    "collections": "Collections"
+    "collections": "Collections",
+    "compare": "Compare"
   },
   "hero": {
     "title": "Discover AI Agent Tools",
@@ -42,6 +43,9 @@
     "compatibility": "Compatibility",
     "details": "Details",
     "viewOnGithub": "View on GitHub",
+    "subscribe": "Subscribe",
+    "subscribed": "Subscribed",
+    "subscribeTooltip": "Get notified on updates",
     "tags": "Tags",
     "noCompatibilityData": "No compatibility data",
     "type": {
@@ -117,7 +121,15 @@
     "inactive": "Inactive",
     "recentSubscribers": "Recent Subscribers",
     "noSubscribers": "No subscribers yet.",
-    "loadError": "Failed to load subscriber data."
+    "loadError": "Failed to load subscriber data.",
+    "proTitle": "Pro Weekly Digest",
+    "proDescription": "Get 20 trending new tools delivered to your inbox every week.",
+    "proSubscribe": "Subscribe to Digest",
+    "proUnsubscribe": "Unsubscribe from Digest",
+    "proSubscribed": "You're subscribed to the weekly digest!",
+    "proUnsubscribed": "You've been unsubscribed from the weekly digest.",
+    "proNotPro": "Upgrade to Pro to receive the weekly digest.",
+    "proSignIn": "Sign in to access the Pro weekly digest."
   },
   "auth": {
     "signIn": "Sign in",

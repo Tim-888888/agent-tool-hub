@@ -10,7 +10,8 @@
     "admin": "管理",
     "favorites": "收藏",
     "contributors": "贡献者",
-    "collections": "合集"
+    "collections": "合集",
+    "compare": "对比"
   },
   "hero": {
     "title": "发现 AI Agent 工具",
@@ -42,6 +43,9 @@
     "compatibility": "兼容性",
     "details": "详细信息",
     "viewOnGithub": "在 GitHub 上查看",
+    "subscribe": "关注",
+    "subscribed": "已关注",
+    "subscribeTooltip": "有更新时收到通知",
     "tags": "标签",
     "noCompatibilityData": "暂无兼容性数据",
     "type": {
@@ -117,7 +121,15 @@
     "inactive": "不活跃",
     "recentSubscribers": "最近订阅者",
     "noSubscribers": "暂无订阅者。",
-    "loadError": "加载订阅者数据失败。"
+    "loadError": "加载订阅者数据失败。",
+    "proTitle": "Pro 周报",
+    "proDescription": "每周精选 20 个热门新工具，推送到你的邮箱。",
+    "proSubscribe": "订阅周报",
+    "proUnsubscribe": "取消订阅周报",
+    "proSubscribed": "已订阅每周精选推送！",
+    "proUnsubscribed": "已取消订阅每周精选推送。",
+    "proNotPro": "升级 Pro 以获取每周精选工具推送。",
+    "proSignIn": "登录以获取 Pro 每周精选推送。"
   },
   "auth": {
     "signIn": "登录",

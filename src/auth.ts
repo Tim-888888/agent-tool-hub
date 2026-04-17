@@ -17,6 +17,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // Always re-evaluate admin status from env (not cached in JWT)
       if (token.id) {
         token.isAdmin = ADMIN_IDS.includes(token.id as string)
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { isPro: true },
+        })
+        token.isPro = dbUser?.isPro ?? false
       }
       return token
     },
@@ -24,6 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string
         session.user.isAdmin = (token.isAdmin as boolean) ?? false
+        session.user.isPro = (token.isPro as boolean) ?? false
       }
       return session
     },

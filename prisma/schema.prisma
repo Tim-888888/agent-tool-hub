@@ -134,6 +134,9 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  isPro         Boolean   @default(false)
+  proNewsletter Boolean   @default(false)
+  proToken      String?   @unique
   createdAt     DateTime  @default(now())
   accounts      Account[]
   sessions      Session[]
@@ -143,6 +146,7 @@ model User {
   favorites     Favorite[]
   subscriptions ToolSubscription[]
   notifications Notification[]
+  digestSends   DigestSend[]
 
   @@index([email])
 }
@@ -339,4 +343,24 @@ model Notification {
   @@index([userId, read])
   @@index([userId])
   @@index([toolId])
+}
+
+model DigestSend {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentAt     DateTime @default(now())
+  toolCount  Int
+  status     String   @default("sent")
+  error      String?
+
+  @@index([userId])
+  @@index([sentAt])
+}
+
+model SkillSyncState {
+  id          String   @id @default("default")
+  lastSyncAt  DateTime @default(now())
+  totalRepos  Int      @default(0)
+  syncedRepos Int      @default(0)
 }

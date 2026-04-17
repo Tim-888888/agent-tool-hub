@@ -10,10 +10,11 @@ export async function GET() {
   }
 
   try {
-    const [total, active, inactive] = await Promise.all([
+    const [total, active, inactive, proSubscriberCount] = await Promise.all([
       prisma.newsletterSubscriber.count(),
       prisma.newsletterSubscriber.count({ where: { active: true } }),
       prisma.newsletterSubscriber.count({ where: { active: false } }),
+      prisma.user.count({ where: { isPro: true, proNewsletter: true } }),
     ]);
 
     const recent = await prisma.newsletterSubscriber.findMany({
@@ -28,7 +29,30 @@ export async function GET() {
       },
     });
 
-    return successResponse({ total, active, inactive, recent });
+    const recentDigestSends = await prisma.digestSend.findMany({
+      orderBy: { sentAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        userId: true,
+        sentAt: true,
+        toolCount: true,
+        status: true,
+        error: true,
+      },
+    });
+
+    return successResponse({
+      total,
+      active,
+      inactive,
+      proSubscriberCount,
+      recent,
+      recentDigestSends: recentDigestSends.map((s) => ({
+        ...s,
+        sentAt: s.sentAt.toISOString(),
+      })),
+    });
   } catch {
     return errorResponse("Failed to fetch subscribers", 500);
   }

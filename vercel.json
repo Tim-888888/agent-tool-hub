@@ -11,6 +11,10 @@
     {
       "path": "/api/skills-sh",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/skills-sh/enrich",
+      "schedule": "0 5 * * *"
     }
   ],
   "functions": {
@@ -22,6 +26,9 @@
     },
     "src/app/api/skills-sh/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/skills-sh/enrich/route.ts": {
+      "maxDuration": 300
     }
   }
 }

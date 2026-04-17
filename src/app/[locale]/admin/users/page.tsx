@@ -11,6 +11,7 @@ export default async function AdminUsersPage() {
       name: true,
       email: true,
       image: true,
+      isPro: true,
       createdAt: true,
       _count: {
         select: { reviews: true, submissions: true, favorites: true },
@@ -28,11 +29,5 @@ export default async function AdminUsersPage() {
     favoriteCount: u._count.favorites,
   }));
 
-  return (
-    <>
-      
-        <AdminUsersClient initialUsers={serialized} />
-      
-    </>
-  );
+  return <AdminUsersClient initialUsers={serialized} />;
 }

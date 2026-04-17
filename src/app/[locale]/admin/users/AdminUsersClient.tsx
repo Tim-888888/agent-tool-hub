@@ -8,6 +8,7 @@ interface AdminUser {
   name: string | null;
   email: string | null;
   image: string | null;
+  isPro: boolean;
   createdAt: string;
   reviewCount: number;
   submissionCount: number;
@@ -22,8 +23,9 @@ export default function AdminUsersClient({ initialUsers }: AdminUsersClientProps
   const { locale } = useI18n();
   const zh = locale === "zh";
   const [search, setSearch] = useState("");
+  const [users, setUsers] = useState(initialUsers);
 
-  const filtered = initialUsers.filter((u) => {
+  const filtered = users.filter((u) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -32,13 +34,29 @@ export default function AdminUsersClient({ initialUsers }: AdminUsersClientProps
     );
   });
 
+  async function togglePro(userId: string, currentIsPro: boolean) {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/pro`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPro: !currentIsPro }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setUsers((prev) =>
+          prev.map((u) => (u.id === userId ? { ...u, isPro: !currentIsPro } : u))
+        );
+      }
+    } catch {}
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-[var(--text-primary)]">
         {zh ? "用户管理" : "Users Management"}
       </h1>
       <p className="mt-1 text-sm text-[var(--text-secondary)]">
-        {zh ? `共 ${initialUsers.length} 个用户` : `${initialUsers.length} users total`}
+        {zh ? `共 ${users.length} 个用户` : `${users.length} users total`}
       </p>
 
       {/* Search */}
@@ -62,6 +80,7 @@ export default function AdminUsersClient({ initialUsers }: AdminUsersClientProps
               <th className="pb-3 pr-4 font-medium">{zh ? "评价" : "Reviews"}</th>
               <th className="pb-3 pr-4 font-medium">{zh ? "提交" : "Submits"}</th>
               <th className="pb-3 pr-4 font-medium">{zh ? "收藏" : "Favorites"}</th>
+              <th className="pb-3 pr-4 font-medium">Pro</th>
               <th className="pb-3 font-medium">{zh ? "注册日期" : "Joined"}</th>
             </tr>
           </thead>
@@ -86,6 +105,18 @@ export default function AdminUsersClient({ initialUsers }: AdminUsersClientProps
                 <td className="py-3 pr-4 text-[var(--text-secondary)]">{user.reviewCount}</td>
                 <td className="py-3 pr-4 text-[var(--text-secondary)]">{user.submissionCount}</td>
                 <td className="py-3 pr-4 text-[var(--text-secondary)]">{user.favoriteCount}</td>
+                <td className="py-3 pr-4">
+                  <button
+                    onClick={() => togglePro(user.id, user.isPro)}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                      user.isPro
+                        ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/20"
+                        : "bg-[var(--bg-tertiary)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    {user.isPro ? "Pro" : zh ? "设为 Pro" : "Set Pro"}
+                  </button>
+                </td>
                 <td className="py-3 text-[var(--text-tertiary)]">
                   {new Date(user.createdAt).toLocaleDateString()}
                 </td>

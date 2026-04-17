@@ -4,7 +4,7 @@
  * Tests the following:
  * 1. searchSkillsSh() - API call to /api/search
  * 2. fetchAllSkillsSh() - enumerate skills via multiple search queries + dedup
- * 3. runSkillsShDiscovery() - full pipeline: fetch → deduplicate → enrich → create
+ * 3. runSkillsShDiscovery() - full pipeline: fetch → deduplicate → create PENDING
  * 4. Dedup logic against existing tools and submissions
  */
 
@@ -19,9 +19,14 @@ jest.mock('@/lib/db', () => ({
       findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
     submission: {
       findMany: jest.fn(),
+    },
+    skillSyncState: {
+      upsert: jest.fn().mockResolvedValue({ id: 'default' }),
+      update: jest.fn().mockResolvedValue({ id: 'default' }),
     },
   },
 }));
@@ -29,19 +34,11 @@ jest.mock('@/lib/db', () => ({
 // Mock github-client
 jest.mock('@/lib/github-client', () => ({
   fetchRepoData: jest.fn(),
-  parseRepoUrl: jest.fn(),
 }));
 
-// Mock translate
-jest.mock('@/lib/translate', () => ({
-  translateToolToChinese: jest.fn().mockResolvedValue({
-    descriptionZh: 'translated',
-  }),
-}));
-
-// Mock npm-client
-jest.mock('@/lib/npm-client', () => ({
-  fetchWeeklyDownloads: jest.fn().mockResolvedValue(null),
+// Mock scoring
+jest.mock('@/lib/scoring', () => ({
+  computeScore: jest.fn().mockReturnValue(42),
 }));
 
 import { prisma } from '@/lib/db';
@@ -209,7 +206,6 @@ describe('fetchAllSkillsSh', () => {
     });
 
     const results = await fetchAllSkillsSh();
-    // Should be sorted by installs desc across all queries
     expect(results[0].installs).toBeGreaterThanOrEqual(results[results.length - 1].installs);
   });
 });
@@ -266,7 +262,7 @@ describe('runSkillsShDiscovery', () => {
     expect(result.created).toBeGreaterThanOrEqual(1);
   });
 
-  it('should create tools with type=SKILL', async () => {
+  it('should create tools with type=SKILL and status=PENDING', async () => {
     (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
     (mockPrisma.submission.findMany as jest.Mock).mockResolvedValueOnce([]);
 
@@ -300,6 +296,7 @@ describe('runSkillsShDiscovery', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           type: 'SKILL',
+          status: 'PENDING',
         }),
       }),
     );
@@ -364,7 +361,36 @@ describe('runSkillsShDiscovery', () => {
     await runSkillsShDiscovery();
 
     const createCall = (mockPrisma.tool.create as jest.Mock).mock.calls[0][0];
-    // A tool with 300 stars + 50 forks should have a meaningful score
-    expect(createCall.data.score).toBeGreaterThan(0);
+    // Score comes from computeScore mock (42)
+    expect(createCall.data.score).toBe(42);
+  });
+
+  it('should update SkillSyncState after discovery', async () => {
+    (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
+    (mockPrisma.submission.findMany as jest.Mock).mockResolvedValueOnce([]);
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        skills: [
+          {
+            id: 'owner/repo/skill',
+            skillId: 'skill',
+            name: 'skill',
+            installs: 100,
+            source: 'owner/repo',
+          },
+        ],
+      }),
+    });
+
+    mockFetchRepoData.mockResolvedValueOnce(mockGitHubRepoData);
+    (mockPrisma.tool.findUnique as jest.Mock).mockResolvedValue(null);
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({ id: 'new-id' });
+
+    await runSkillsShDiscovery();
+
+    expect(mockPrisma.skillSyncState.upsert).toHaveBeenCalled();
+    expect(mockPrisma.skillSyncState.update).toHaveBeenCalled();
   });
 });

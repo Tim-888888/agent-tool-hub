@@ -6,16 +6,15 @@
  *
  * Design:
  * - Uses /api/search?q={query}&limit={n} to enumerate skills
- * - Searches with broad programming terms to maximize coverage
- * - Deduplicates by skill id (source repo + skill name)
+ * - Two-phase approach: Phase A (collect) creates PENDING tools fast, Phase B (enrich) adds translations
+ * - Searches with 2-char broad queries + topic queries to maximize coverage
+ * - Deduplicates by skill source (owner/repo)
  * - Skips repos already in the database or with pending submissions
- * - Enriches with GitHub stars, forks, language, license via fetchRepoData
- * - Creates tools with type=SKILL and status=PENDING for admin review
+ * - Rate limits: 30 requests/min to skills.sh, batch with 2.5s delays
  */
 
 import { prisma } from '@/lib/db';
 import { fetchRepoData } from '@/lib/github-client';
-import { translateToolToChinese } from '@/lib/translate';
 import { computeScore } from '@/lib/scoring';
 import { withRetry } from '@/lib/retry';
 
@@ -39,32 +38,23 @@ export interface SkillsShDiscoveryResult {
   errors: string[];
 }
 
-/** Broad search queries to maximize skill coverage. */
+/**
+ * Broad 2-char substrings to maximize skill coverage.
+ * skills.sh uses fuzzy search, so short common substrings match the most skills.
+ * Rate limit: 30 req/min, so we batch with delays.
+ */
 const SEARCH_QUERIES = [
-  'react',
-  'typescript',
-  'python',
-  'mcp server',
-  'frontend',
-  'backend',
-  'testing',
-  'code review',
-  'security',
-  'docker',
-  'api',
-  'database',
-  'deploy',
-  'git',
-  'performance',
-  'css',
-  'tailwind',
-  'nextjs',
-  'node',
-  'rust',
+  // High-yield 2-char substrings (each matches 30K-53K skills)
+  'll', 'er', 'in', 'on', 'an', 're', 'al', 'en', 'ar', 'te',
+  'nt', 'ng', 'ch', 'io', 'pe', 'ma', 'se', 'le', 'ri', 'or',
+  // Topic-specific queries for quality boost
+  'mcp', 'server', 'cli', 'agent', 'automation', 'workflow',
+  'react', 'typescript', 'python', 'frontend', 'backend',
+  'testing', 'security', 'docker', 'database', 'deploy',
 ];
 
-const MAX_RESULTS_PER_QUERY = 20;
-const MAX_TOOLS_PER_RUN = 30;
+const MAX_RESULTS_PER_QUERY = 500;
+const MAX_TOOLS_PER_RUN = 100;
 
 /**
  * Search skills.sh for skills matching a query.
@@ -96,19 +86,34 @@ export async function searchSkillsSh(
 /**
  * Fetch skills from skills.sh using multiple broad search queries.
  * Deduplicates by skill id and sorts by installs (descending).
+ * Runs searches in batches with delays to respect rate limits (30 req/min).
  */
 export async function fetchAllSkillsSh(): Promise<SkillsShSkill[]> {
   const allSkills: SkillsShSkill[] = [];
   const seenIds = new Set<string>();
 
-  for (const query of SEARCH_QUERIES) {
-    const skills = await searchSkillsSh(query, MAX_RESULTS_PER_QUERY);
+  // 5 queries per batch, 2.5s delay between batches → ~7 batches = ~17s total delays
+  const BATCH_SIZE = 5;
+  const BATCH_DELAY_MS = process.env.NODE_ENV === 'test' ? 0 : 2500;
 
-    for (const skill of skills) {
-      if (!seenIds.has(skill.id)) {
-        seenIds.add(skill.id);
-        allSkills.push(skill);
+  for (let i = 0; i < SEARCH_QUERIES.length; i += BATCH_SIZE) {
+    const batch = SEARCH_QUERIES.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(
+      batch.map((q) => searchSkillsSh(q, MAX_RESULTS_PER_QUERY)),
+    );
+
+    for (const skills of results) {
+      for (const skill of skills) {
+        if (!seenIds.has(skill.id)) {
+          seenIds.add(skill.id);
+          allSkills.push(skill);
+        }
       }
+    }
+
+    // Delay between batches to avoid 429 rate limit
+    if (i + BATCH_SIZE < SEARCH_QUERIES.length) {
+      await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
     }
   }
 
@@ -120,7 +125,8 @@ export async function fetchAllSkillsSh(): Promise<SkillsShSkill[]> {
 
 /**
  * Full discovery pipeline: fetch from skills.sh → deduplicate against DB →
- * enrich with GitHub data → create PENDING tools.
+ * create PENDING tools with basic GitHub data (no translation).
+ * Translation/enrichment is done in Phase B via the enrich cron.
  */
 export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
   const errors: string[] = [];
@@ -152,7 +158,23 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
   });
 
   let created = 0;
+  let skipped = 0;
   const seenRepos = new Set<string>();
+
+  // Update sync state
+  await prisma.skillSyncState.upsert({
+    where: { id: 'default' },
+    update: {
+      lastSyncAt: new Date(),
+      totalRepos: allSkills.length,
+      syncedRepos: existingUrls.size + created,
+    },
+    create: {
+      id: 'default',
+      totalRepos: allSkills.length,
+      syncedRepos: 0,
+    },
+  });
 
   for (const skill of newSkills.slice(0, MAX_TOOLS_PER_RUN)) {
     try {
@@ -160,10 +182,10 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
       const [owner, repo] = skill.source.split('/');
 
       // Skip if we already processed this repo (one tool per repo)
-      if (seenRepos.has(skill.source)) continue;
+      if (seenRepos.has(skill.source)) { skipped++; continue; }
       seenRepos.add(skill.source);
 
-      // Enrich with GitHub data
+      // Enrich with GitHub data (basic only, no translation)
       let stars = 0;
       let forks = 0;
       let language: string | null = null;
@@ -189,7 +211,7 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
 
       // Skip if slug already exists
       const existingSlug = await prisma.tool.findUnique({ where: { slug } });
-      if (existingSlug) continue;
+      if (existingSlug) { skipped++; continue; }
 
       const score = computeScore({
         stars,
@@ -214,20 +236,6 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
         },
       });
 
-      // Translate to Chinese (fire-and-forget)
-      if (description) {
-        translateToolToChinese(description, [])
-          .then(async (translation) => {
-            if (translation.descriptionZh) {
-              await prisma.tool.update({
-                where: { slug },
-                data: { descriptionZh: translation.descriptionZh },
-              });
-            }
-          })
-          .catch(() => {});
-      }
-
       created++;
     } catch (error) {
       errors.push(
@@ -236,11 +244,17 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
     }
   }
 
+  // Update synced count after creation
+  await prisma.skillSyncState.update({
+    where: { id: 'default' },
+    data: { syncedRepos: existingUrls.size + created },
+  });
+
   return {
     source: 'skills-sh',
     discovered: allSkills.length,
     created,
-    skipped: newSkills.length - created,
+    skipped,
     errors,
   };
 }
@@ -261,5 +275,5 @@ function generateSlug(owner: string, repo: string): string {
     slug = `${owner.toLowerCase()}-${slug}`;
   }
 
-  return slug;
+  return `skill-${slug}`;
 }
