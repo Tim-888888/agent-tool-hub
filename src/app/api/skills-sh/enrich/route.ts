@@ -9,8 +9,8 @@ const CRON_SECRET = process.env.CRON_SECRET;
 /** Minimum score to auto-approve a tool. Below this, stays PENDING for manual review. */
 const AUTO_APPROVE_MIN_SCORE = 20;
 
-/** Max tools to process per run (GLM concurrency=2, ~3s/tool → ~150s for 50). */
-const BATCH_SIZE = 50;
+/** Max tools to process per run. ~8-12s/tool with GitHub + GLM calls, must fit in 300s maxDuration. */
+const BATCH_SIZE = 15;
 
 interface EnrichResult {
   processed: number;
