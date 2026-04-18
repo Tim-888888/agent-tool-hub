@@ -4,8 +4,8 @@ import { translateToolToChinese } from "@/lib/translate";
 
 export const dynamic = "force-dynamic";
 
-/** Max tools per run. 1 GLM call/tool × ~3s × concurrency 2 = ~75s for 50 tools. */
-const BATCH_SIZE = 50;
+/** Max tools per run. 1 GLM call/tool × ~3s × concurrency 2 = ~45s for 30 tools. */
+const BATCH_SIZE = 30;
 
 /**
  * POST /api/skills-sh/translate

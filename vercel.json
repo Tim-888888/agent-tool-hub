@@ -32,6 +32,9 @@
     },
     "src/app/api/skills-sh/enrich/route.ts": {
       "maxDuration": 300
+    },
+    "src/app/api/skills-sh/translate/route.ts": {
+      "maxDuration": 300
     }
   }
 }
