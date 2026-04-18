@@ -73,8 +73,8 @@ async function handleEnrichReadme(): Promise<Response> {
 
     for (const tool of rawTools) {
       try {
-        await withTimeout(enrichReadmeContent(tool), TOOL_TIMEOUT_MS);
-        enriched++;
+        const didEnrich = await withTimeout(enrichReadmeContent(tool), TOOL_TIMEOUT_MS);
+        if (didEnrich) { enriched++; } else { skipped++; }
       } catch (err) {
         errors.push(`${tool.name}: ${err instanceof Error ? err.message : String(err)}`);
         skipped++;
@@ -109,15 +109,29 @@ async function enrichReadmeContent(tool: {
   name: string;
   description: string;
   repoUrl: string;
-}): Promise<void> {
+}): Promise<boolean> {
   const parsed = parseRepoUrl(tool.repoUrl);
-  if (!parsed) return; // Not a GitHub URL
+  if (!parsed) {
+    // Not a GitHub URL — mark as processed so it won't be retried
+    await prisma.tool.update({
+      where: { id: tool.id },
+      data: { featuresEn: ["No GitHub repository"] },
+    });
+    return false;
+  }
 
   const [readmeResult] = await Promise.allSettled([
     withRetry(() => fetchReadme(parsed.owner, parsed.repo)),
   ]);
   const readmeContent = readmeResult.status === "fulfilled" ? readmeResult.value : null;
-  if (!readmeContent) return; // No README found
+  if (!readmeContent) {
+    // No README found — mark as processed so it won't be retried
+    await prisma.tool.update({
+      where: { id: tool.id },
+      data: { featuresEn: ["No README available"] },
+    });
+    return false;
+  }
 
   const features = extractFeatures(readmeContent);
   const installGuide = extractInstallGuide(readmeContent);
@@ -163,6 +177,7 @@ async function enrichReadmeContent(tool: {
   classifyAndConnectCategories(tool.id, tool.name, tool.description, readmeContent).catch(
     () => {},
   );
+  return true;
 }
 
 /** Wrap a promise with a timeout. Rejects with TimeoutError if exceeded. */
