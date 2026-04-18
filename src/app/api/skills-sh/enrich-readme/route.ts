@@ -56,26 +56,18 @@ async function handleEnrichReadme(): Promise<Response> {
   let enriched = 0;
   let skipped = 0;
 
-  // Debug: check actual array values in DB
-  const debug = await prisma.$queryRaw<Array<{ id: string; name: string; features_en: string[] }>>`
-    SELECT id, name, features_en FROM "Tool"
+  // Use raw SQL — Prisma camelCase column names must be quoted
+  const rawTools = await prisma.$queryRaw<Array<{ id: string; name: string; description: string; repoUrl: string }>>`
+    SELECT id, name, description, "repoUrl" FROM "Tool"
     WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
-    ORDER BY score DESC LIMIT 5
-  `;
-  console.log("DEBUG features_en samples:", JSON.stringify(debug.map(d => ({ name: d.name, len: d.features_en?.length, val: d.features_en }))));
-
-  // Use raw query to find tools with empty or null featuresEn
-  const rawTools = await prisma.$queryRaw<Array<{ id: string; name: string; description: string; repo_url: string }>>`
-    SELECT id, name, description, repo_url FROM "Tool"
-    WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
-      AND (features_en IS NULL OR array_length(features_en, 1) IS NULL)
+      AND ("featuresEn" IS NULL OR array_length("featuresEn", 1) IS NULL)
     ORDER BY score DESC LIMIT ${BATCH_SIZE}
   `;
   const tools = rawTools.map(t => ({
     id: t.id,
     name: t.name,
     description: t.description,
-    repoUrl: t.repo_url,
+    repoUrl: t.repoUrl,
   }));
 
   if (tools.length === 0) {
@@ -96,7 +88,7 @@ async function handleEnrichReadme(): Promise<Response> {
   const remainingResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
     SELECT COUNT(*) as count FROM "Tool"
     WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
-      AND (features_en IS NULL OR array_length(features_en, 1) IS NULL)
+      AND ("featuresEn" IS NULL OR array_length("featuresEn", 1) IS NULL)
   `;
   const remaining = Number(remainingResult[0]?.count ?? 0);
 

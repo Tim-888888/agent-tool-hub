@@ -104,14 +104,14 @@ async function handleEnrich(): Promise<Response> {
     // Priority 3: ACTIVE skills missing featuresEn (README enrichment)
     if (processed < BATCH_SIZE) {
       const limit = Math.max(0, BATCH_SIZE - processed);
-      const rawUnenriched = await prisma.$queryRaw<Array<{ id: string; name: string; description: string; repo_url: string }>>`
-        SELECT id, name, description, repo_url FROM "Tool"
+      const rawUnenriched = await prisma.$queryRaw<Array<{ id: string; name: string; description: string; repoUrl: string }>>`
+        SELECT id, name, description, "repoUrl" FROM "Tool"
         WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
-          AND (features_en IS NULL OR array_length(features_en, 1) IS NULL)
+          AND ("featuresEn" IS NULL OR array_length("featuresEn", 1) IS NULL)
         ORDER BY score DESC LIMIT ${limit}
       `;
       const unenrichedTools = rawUnenriched.map(t => ({
-        id: t.id, name: t.name, description: t.description, repoUrl: t.repo_url,
+        id: t.id, name: t.name, description: t.description, repoUrl: t.repoUrl,
       }));
 
       for (const tool of unenrichedTools) {
