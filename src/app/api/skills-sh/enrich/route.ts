@@ -1,7 +1,7 @@
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { prisma } from "@/lib/db";
 import { approveDiscoveredTool } from "@/lib/approve-tool";
-import { translateToolToChinese, generateCollectionContent } from "@/lib/translate";
+import { translateToolToChinese, generateCollectionContent, translateInstallGuide } from "@/lib/translate";
 import { classifyAndConnectCategories, connectAllPlatforms } from "@/lib/tool-enrichment";
 import { parseRepoUrl, fetchRepoData, fetchReadme } from "@/lib/github-client";
 import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser";
@@ -101,6 +101,33 @@ async function handleEnrich(): Promise<Response> {
       }
     }
 
+    // Priority 3: ACTIVE skills missing featuresEn (README enrichment)
+    if (processed < BATCH_SIZE) {
+      const unenrichedTools = await prisma.tool.findMany({
+        where: {
+          type: "SKILL",
+          status: { in: ["ACTIVE", "FEATURED"] },
+          featuresEn: { isEmpty: true },
+        },
+        orderBy: { score: "desc" },
+        take: Math.max(0, BATCH_SIZE - processed),
+        select: {
+          id: true, name: true, description: true, repoUrl: true,
+        },
+      });
+
+      for (const tool of unenrichedTools) {
+        try {
+          await enrichReadmeContent(tool);
+          enriched++;
+          processed++;
+        } catch (err) {
+          errors.push(`${tool.name}: ${err instanceof Error ? err.message : String(err)}`);
+          skipped++; processed++;
+        }
+      }
+    }
+
     console.log(JSON.stringify({
       event: "skills_sh_enrich_complete",
       processed, enriched, skipped, errors: errors.length,
@@ -159,7 +186,6 @@ async function enrichTranslationsOnly(tool: {
 
   // Install guide
   if (installGuide) {
-    const { translateInstallGuide } = await import("@/lib/translate");
     const guideZh = await translateInstallGuide(installGuide);
     updateData.installGuide = { en: installGuide, zh: guideZh ?? installGuide };
   }
@@ -172,4 +198,52 @@ async function enrichTranslationsOnly(tool: {
   if (features.length === 0) {
     await connectAllPlatforms(tool.id);
   }
+}
+
+/** Enrich an ACTIVE tool with features + install guide from GitHub README. */
+async function enrichReadmeContent(tool: {
+  id: string; name: string; description: string; repoUrl: string;
+}): Promise<void> {
+  const parsed = parseRepoUrl(tool.repoUrl);
+  if (!parsed) return;
+
+  const [readmeResult] = await Promise.allSettled([
+    withRetry(() => fetchReadme(parsed.owner, parsed.repo)),
+  ]);
+  const readmeContent = readmeResult.status === "fulfilled" ? readmeResult.value : null;
+  if (!readmeContent) return;
+
+  const features = extractFeatures(readmeContent);
+  const installGuide = extractInstallGuide(readmeContent);
+
+  const updateData: Record<string, unknown> = {};
+
+  if (features.length > 0) {
+    updateData.featuresEn = features;
+    const translation = await translateToolToChinese("", features);
+    if (translation.featuresZh.length > 0) {
+      updateData.featuresZh = translation.featuresZh;
+    }
+  } else {
+    const collectionContent = await generateCollectionContent(
+      tool.name, tool.description, tool.repoUrl, readmeContent,
+    );
+    updateData.featuresEn = collectionContent.featuresEn;
+    updateData.featuresZh = collectionContent.featuresZh;
+    if (!installGuide) {
+      updateData.installGuide = {
+        en: collectionContent.installGuideEn,
+        zh: collectionContent.installGuideZh,
+      };
+    }
+  }
+
+  if (installGuide) {
+    const guideZh = await translateInstallGuide(installGuide);
+    updateData.installGuide = { en: installGuide, zh: guideZh ?? installGuide };
+  }
+
+  await prisma.tool.update({ where: { id: tool.id }, data: updateData });
+
+  classifyAndConnectCategories(tool.id, tool.name, tool.description, readmeContent).catch(() => {});
 }
