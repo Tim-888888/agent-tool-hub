@@ -59,52 +59,44 @@ async function handleEnrichReadme(): Promise<Response> {
   let enriched = 0;
   let skipped = 0;
 
-  // Use raw SQL — Prisma camelCase column names must be quoted
-  const rawTools = await prisma.$queryRaw<Array<{ id: string; name: string; description: string; repoUrl: string }>>`
-    SELECT id, name, description, "repoUrl" FROM "Tool"
-    WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
-      AND ("featuresEn" IS NULL OR array_length("featuresEn", 1) IS NULL)
-    ORDER BY score DESC LIMIT ${BATCH_SIZE}
-  `;
-  const tools = rawTools.map(t => ({
-    id: t.id,
-    name: t.name,
-    description: t.description,
-    repoUrl: t.repoUrl,
-  }));
+  // DEBUG: First just test the raw SQL query
+  try {
+    const debugCount = await prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*) as count FROM "Tool"
+      WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
+        AND ("featuresEn" IS NULL OR array_length("featuresEn", 1) IS NULL)
+    `;
+    const total = Number(debugCount[0]?.count ?? 0);
 
-  if (tools.length === 0) {
-    return successResponse({ enriched: 0, skipped: 0, errors: [], remaining: 0 });
-  }
+    if (total === 0) {
+      return successResponse({ enriched: 0, skipped: 0, errors: [], remaining: 0, debug: 'no tools to enrich' });
+    }
 
-  for (const tool of tools) {
+    // Only process 1 tool as test
+    const rawTools = await prisma.$queryRaw<Array<{ id: string; name: string; description: string; repoUrl: string }>>`
+      SELECT id, name, description, "repoUrl" FROM "Tool"
+      WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
+        AND ("featuresEn" IS NULL OR array_length("featuresEn", 1) IS NULL)
+      ORDER BY score DESC LIMIT 1
+    `;
+
+    if (rawTools.length === 0) {
+      return successResponse({ enriched: 0, skipped: 0, errors: [], remaining: total, debug: 'query returned 0 but count says otherwise' });
+    }
+
+    const tool = rawTools[0];
     try {
       await withTimeout(enrichReadmeContent(tool), TOOL_TIMEOUT_MS);
       enriched++;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      errors.push(`${tool.name}: ${msg}`);
+      errors.push(`${tool.name}: ${err instanceof Error ? err.message : String(err)}`);
       skipped++;
     }
+
+    return successResponse({ enriched, skipped, errors, remaining: total - enriched, debug: `total=${total}, processed=1` });
+  } catch (dbErr) {
+    return errorResponse(`DB error: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`, 500);
   }
-
-  // Count remaining using raw SQL for consistency
-  const remainingResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*) as count FROM "Tool"
-    WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
-      AND ("featuresEn" IS NULL OR array_length("featuresEn", 1) IS NULL)
-  `;
-  const remaining = Number(remainingResult[0]?.count ?? 0);
-
-  console.log(JSON.stringify({
-    event: "skills_sh_enrich_readme",
-    enriched,
-    skipped,
-    errors: errors.length,
-    remaining,
-  }));
-
-  return successResponse({ enriched, skipped, errors, remaining });
 }
 
 /**
