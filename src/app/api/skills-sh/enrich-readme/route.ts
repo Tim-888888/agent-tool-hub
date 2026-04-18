@@ -60,7 +60,10 @@ async function handleEnrichReadme(): Promise<Response> {
     where: {
       type: "SKILL",
       status: { in: ["ACTIVE", "FEATURED"] },
-      featuresEn: { isEmpty: true },
+      OR: [
+        { featuresEn: { isEmpty: true } },
+        { featuresEn: null },
+      ],
     },
     orderBy: { score: "desc" },
     take: BATCH_SIZE,
@@ -90,7 +93,10 @@ async function handleEnrichReadme(): Promise<Response> {
     where: {
       type: "SKILL",
       status: { in: ["ACTIVE", "FEATURED"] },
-      featuresEn: { isEmpty: true },
+      OR: [
+        { featuresEn: { isEmpty: true } },
+        { featuresEn: null },
+      ],
     },
   });
 

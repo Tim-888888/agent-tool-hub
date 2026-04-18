@@ -107,7 +107,10 @@ async function handleEnrich(): Promise<Response> {
         where: {
           type: "SKILL",
           status: { in: ["ACTIVE", "FEATURED"] },
-          featuresEn: { isEmpty: true },
+          OR: [
+            { featuresEn: { isEmpty: true } },
+            { featuresEn: null },
+          ],
         },
         orderBy: { score: "desc" },
         take: Math.max(0, BATCH_SIZE - processed),
