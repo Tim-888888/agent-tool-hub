@@ -14,11 +14,11 @@ export const dynamic = "force-dynamic";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
-/** Max tools per run. ~12s/tool × 15 = ~180s, safe within 300s maxDuration. */
-const BATCH_SIZE = 15;
+/** Max tools per run. 5 tools × 30s = ~150s, safe within 300s maxDuration. */
+const BATCH_SIZE = 5;
 
-/** Max time per tool before skipping (ms). Prevents single tool from blocking batch. */
-const TOOL_TIMEOUT_MS = 15_000;
+/** Max time per tool before skipping (ms). fetchReadme(10s) + GLM(15s) + buffer. */
+const TOOL_TIMEOUT_MS = 30_000;
 
 /**
  * GET /api/skills-sh/enrich-readme — Vercel Cron trigger
