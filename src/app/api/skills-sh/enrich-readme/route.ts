@@ -17,6 +17,9 @@ const CRON_SECRET = process.env.CRON_SECRET;
 /** Max tools per run. ~12s/tool × 15 = ~180s, safe within 300s maxDuration. */
 const BATCH_SIZE = 15;
 
+/** Max time per tool before skipping (ms). Prevents single tool from blocking batch. */
+const TOOL_TIMEOUT_MS = 15_000;
+
 /**
  * GET /api/skills-sh/enrich-readme — Vercel Cron trigger
  */
@@ -76,10 +79,11 @@ async function handleEnrichReadme(): Promise<Response> {
 
   for (const tool of tools) {
     try {
-      await enrichReadmeContent(tool);
+      await withTimeout(enrichReadmeContent(tool), TOOL_TIMEOUT_MS);
       enriched++;
     } catch (err) {
-      errors.push(`${tool.name}: ${err instanceof Error ? err.message : String(err)}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`${tool.name}: ${msg}`);
       skipped++;
     }
   }
@@ -167,4 +171,15 @@ async function enrichReadmeContent(tool: {
   classifyAndConnectCategories(tool.id, tool.name, tool.description, readmeContent).catch(
     () => {},
   );
+}
+
+/** Wrap a promise with a timeout. Rejects with TimeoutError if exceeded. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); },
+    );
+  });
 }
