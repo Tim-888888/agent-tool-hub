@@ -59,6 +59,7 @@ export async function fetchRepoData(
 ): Promise<GitHubRepoData> {
   const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
     headers: getHeaders(),
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!res.ok) {
@@ -84,11 +85,15 @@ export async function fetchReadme(
   repo: string,
 ): Promise<string | null> {
   for (const branch of ['main', 'master']) {
-    const res = await fetch(
-      `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/README.md`,
-      { headers: getHeaders() },
-    );
-    if (res.ok) return res.text();
+    try {
+      const res = await fetch(
+        `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/README.md`,
+        { headers: getHeaders(), signal: AbortSignal.timeout(10_000) },
+      );
+      if (res.ok) return res.text();
+    } catch {
+      // Timeout or network error — skip this branch
+    }
   }
   return null;
 }

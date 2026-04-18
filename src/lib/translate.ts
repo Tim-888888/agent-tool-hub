@@ -103,6 +103,7 @@ ${readmeSnippet ? `README excerpt:\n${readmeSnippet}` : "No README available."}`
           ],
           temperature: 0.4,
         }),
+        signal: AbortSignal.timeout(30_000),
       })
 
       if (!response.ok) {
@@ -233,6 +234,7 @@ Rules:
           ],
           temperature: 0.3,
         }),
+        signal: AbortSignal.timeout(30_000),
       })
 
       if (!response.ok) {
@@ -328,6 +330,7 @@ Rules:
           ],
           temperature: 0.3,
         }),
+        signal: AbortSignal.timeout(30_000),
       })
 
       if (!response.ok) return null
@@ -401,6 +404,7 @@ ${readmeSnippet ? `README excerpt: ${readmeSnippet}` : ""}`
           ],
           temperature: 0.1,
         }),
+        signal: AbortSignal.timeout(30_000),
       })
 
       if (!response.ok) return []
