@@ -56,24 +56,27 @@ async function handleEnrichReadme(): Promise<Response> {
   let enriched = 0;
   let skipped = 0;
 
-  const tools = await prisma.tool.findMany({
-    where: {
-      type: "SKILL",
-      status: { in: ["ACTIVE", "FEATURED"] },
-      OR: [
-        { featuresEn: { isEmpty: true } },
-        { featuresEn: null },
-      ],
-    },
-    orderBy: { score: "desc" },
-    take: BATCH_SIZE,
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      repoUrl: true,
-    },
-  });
+  // Debug: check actual array values in DB
+  const debug = await prisma.$queryRaw<Array<{ id: string; name: string; features_en: string[] }>>`
+    SELECT id, name, features_en FROM "Tool"
+    WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
+    ORDER BY score DESC LIMIT 5
+  `;
+  console.log("DEBUG features_en samples:", JSON.stringify(debug.map(d => ({ name: d.name, len: d.features_en?.length, val: d.features_en }))));
+
+  // Use raw query to find tools with empty or null featuresEn
+  const rawTools = await prisma.$queryRaw<Array<{ id: string; name: string; description: string; repo_url: string }>>`
+    SELECT id, name, description, repo_url FROM "Tool"
+    WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
+      AND (features_en IS NULL OR array_length(features_en, 1) IS NULL)
+    ORDER BY score DESC LIMIT ${BATCH_SIZE}
+  `;
+  const tools = rawTools.map(t => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    repoUrl: t.repo_url,
+  }));
 
   if (tools.length === 0) {
     return successResponse({ enriched: 0, skipped: 0, errors: [], remaining: 0 });
@@ -89,16 +92,13 @@ async function handleEnrichReadme(): Promise<Response> {
     }
   }
 
-  const remaining = await prisma.tool.count({
-    where: {
-      type: "SKILL",
-      status: { in: ["ACTIVE", "FEATURED"] },
-      OR: [
-        { featuresEn: { isEmpty: true } },
-        { featuresEn: null },
-      ],
-    },
-  });
+  // Count remaining using raw SQL for consistency
+  const remainingResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*) as count FROM "Tool"
+    WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
+      AND (features_en IS NULL OR array_length(features_en, 1) IS NULL)
+  `;
+  const remaining = Number(remainingResult[0]?.count ?? 0);
 
   console.log(JSON.stringify({
     event: "skills_sh_enrich_readme",
