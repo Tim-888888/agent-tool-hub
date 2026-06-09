@@ -99,7 +99,9 @@ describe("translateToolToChinese cache layer", () => {
     const upsertArgs = mockUpsert.mock.calls[0][0]
     expect(upsertArgs.where.sourceHash).toBeDefined()
     expect(upsertArgs.create.descriptionZh).toBe("一个强大的工具")
-    expect(upsertArgs.create.featuresZh).toEqual(["特性一"])
+    expect(upsertArgs.create.features.create).toEqual([
+      { value: "特性一", sortOrder: 0 },
+    ])
   })
 
   it("produces consistent hashes for same input (cache key stability)", async () => {

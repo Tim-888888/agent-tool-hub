@@ -1,9 +1,8 @@
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { runSkillsShDiscovery } from "@/lib/skills-sh-scraper";
+import { requireCronRequest } from "@/lib/cron-auth";
 
 export const dynamic = "force-dynamic";
-
-const CRON_SECRET = process.env.CRON_SECRET;
 
 /**
  * GET /api/skills-sh — triggered by Vercel Cron (daily 4AM UTC)
@@ -11,17 +10,8 @@ const CRON_SECRET = process.env.CRON_SECRET;
  * No GLM calls — translation is done in Phase B (/api/skills-sh/enrich).
  */
 export async function GET(request: Request): Promise<Response> {
-  if (CRON_SECRET) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return errorResponse("Unauthorized", 401);
-    }
-  } else {
-    const userAgent = request.headers.get("user-agent") ?? "";
-    if (!userAgent.includes("vercel-cron")) {
-      return errorResponse("Unauthorized", 401);
-    }
-  }
+  const cronError = requireCronRequest(request);
+  if (cronError) return cronError;
 
   try {
     const result = await runSkillsShDiscovery();

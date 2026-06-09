@@ -2,17 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { requireAuth, isAdmin } from "@/lib/auth-helpers";
-import {
-  parseRepoUrl,
-  fetchRepoData,
-  fetchReadme,
-} from "@/lib/github-client";
-import { fetchWeeklyDownloads } from "@/lib/npm-client";
-import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser";
-import { computeScore } from "@/lib/scoring";
-import { withRetry } from "@/lib/retry";
-import { translateToolToChinese, generateCollectionContent, translateInstallGuide } from "@/lib/translate";
-import { connectAllPlatforms, classifyAndConnectCategories } from "@/lib/tool-enrichment";
+import { approveDiscoveredTool, rejectDiscoveredTool } from "@/lib/approve-tool";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +14,6 @@ const actionSchema = z.object({
 /**
  * PATCH /api/admin/discovered-tools
  * Admin-only: approve or reject an auto-discovered tool.
- * Approve: enrich with GitHub data and set status to ACTIVE.
- * Reject: set status to ARCHIVED.
  */
 export async function PATCH(request: Request): Promise<Response> {
   const { session, error } = await requireAuth();
@@ -51,139 +39,13 @@ export async function PATCH(request: Request): Promise<Response> {
     return errorResponse("Tool not found or not in PENDING status", 404);
   }
 
-  if (action === "reject") {
-    await prisma.tool.update({
-      where: { id: toolId },
-      data: { status: "ARCHIVED" },
-    });
-    return successResponse({ status: "ARCHIVED" });
+  const result = action === "reject"
+    ? await rejectDiscoveredTool(toolId)
+    : await approveDiscoveredTool(toolId);
+
+  if (!result.success) {
+    return errorResponse(result.error ?? "Unable to update discovered tool", 400);
   }
 
-  // Approve: enrich with fresh GitHub data
-  const parsed = parseRepoUrl(tool.repoUrl);
-  if (parsed) {
-    const { owner, repo } = parsed;
-
-    const [repoResult, readmeResult, downloadsResult] =
-      await Promise.allSettled([
-        withRetry(() => fetchRepoData(owner, repo)),
-        withRetry(() => fetchReadme(owner, repo)),
-        tool.npmPackage
-          ? withRetry(() => fetchWeeklyDownloads(tool.npmPackage!))
-          : Promise.resolve(null as number | null),
-      ]);
-
-    const repoData =
-      repoResult.status === "fulfilled" ? repoResult.value : null;
-    const readmeContent =
-      readmeResult.status === "fulfilled" ? readmeResult.value : null;
-    const npmDownloads =
-      downloadsResult.status === "fulfilled"
-        ? (downloadsResult.value as number | null)
-        : null;
-
-    const features = readmeContent ? extractFeatures(readmeContent) : [];
-    const installGuide = readmeContent
-      ? extractInstallGuide(readmeContent)
-      : null;
-
-    const score = repoData
-      ? computeScore({
-          stars: repoData.stargazers_count,
-          forks: repoData.forks_count,
-          lastCommitAt: new Date(repoData.pushed_at),
-          npmDownloads,
-        })
-      : tool.score;
-
-    const updateData: Record<string, unknown> = {
-      status: "ACTIVE",
-      score,
-    };
-
-    if (repoData) {
-      updateData.stars = repoData.stargazers_count;
-      updateData.forks = repoData.forks_count;
-      updateData.openIssues = repoData.open_issues_count;
-      updateData.lastCommitAt = new Date(repoData.pushed_at);
-      updateData.language = repoData.language;
-      updateData.license = repoData.license?.key ?? null;
-      if (repoData.description) updateData.description = repoData.description;
-    }
-
-    // Only set features/installGuide if existing values are empty
-    if (features.length > 0 && (!tool.featuresEn || tool.featuresEn.length === 0)) {
-      updateData.featuresEn = features;
-    } else if (!tool.featuresEn || tool.featuresEn.length === 0) {
-      // No features extracted — generate collection summary for awesome-list type repos
-      const collectionContent = await generateCollectionContent(
-        tool.name,
-        (updateData.description as string) ?? tool.description,
-        tool.repoUrl,
-        readmeContent,
-      );
-      updateData.featuresEn = collectionContent.featuresEn;
-      updateData.featuresZh = collectionContent.featuresZh;
-      if (!tool.installGuide && !installGuide) {
-        updateData.installGuide = {
-          en: collectionContent.installGuideEn,
-          zh: collectionContent.installGuideZh,
-        };
-      }
-    }
-    if (installGuide && !tool.installGuide) {
-      // Translate install guide to Chinese
-      const guideZh = await translateInstallGuide(installGuide);
-      updateData.installGuide = {
-        en: installGuide,
-        zh: guideZh ?? installGuide,
-      };
-    }
-    if (npmDownloads !== null) {
-      updateData.npmDownloads = npmDownloads;
-    }
-
-    // Translate to Chinese via GLM API
-    const finalDescription = (updateData.description as string) ?? tool.description;
-    const finalFeatures = ((updateData.featuresEn as string[]) ?? tool.featuresEn) as string[];
-    // Skip translation if featuresZh was already set by generateCollectionContent
-    if (!(updateData.featuresZh as string[])?.length) {
-      const translation = await translateToolToChinese(finalDescription, finalFeatures);
-      if (translation.descriptionZh) {
-        updateData.descriptionZh = translation.descriptionZh;
-      }
-      if (translation.featuresZh.length > 0) {
-        updateData.featuresZh = translation.featuresZh;
-      }
-    } else if (!updateData.descriptionZh) {
-      const translation = await translateToolToChinese(finalDescription, []);
-      if (translation.descriptionZh) {
-        updateData.descriptionZh = translation.descriptionZh;
-      }
-    }
-
-    await prisma.tool.update({
-      where: { id: toolId },
-      data: updateData,
-    });
-
-    if (features.length === 0) {
-      await connectAllPlatforms(toolId);
-    }
-
-    await classifyAndConnectCategories(
-      toolId,
-      tool.name,
-      (updateData.description as string) ?? tool.description,
-      readmeContent,
-    );
-  } else {
-    // No GitHub enrichment possible, just activate
-    await prisma.tool.update({
-      where: { id: toolId },
-      data: { status: "ACTIVE" },
-    });
-  }
-
-  return successResponse({ status: "ACTIVE" });
+  return successResponse({ status: action === "reject" ? "ARCHIVED" : "ACTIVE" });
 }

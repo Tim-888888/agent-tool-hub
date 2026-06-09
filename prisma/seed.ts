@@ -1,8 +1,6 @@
 import { PrismaClient, ToolType, ToolStatus } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 // --- Data extracted from src/lib/mock-data.ts ---
 // Duplicated here because the seed script runs outside Next.js (no @/ path aliases)
@@ -323,6 +321,38 @@ const TOOLS: ToolSeed[] = [
   },
 ];
 
+function listRows(values: string[]) {
+  return values.map((value, sortOrder) => ({ value, sortOrder }));
+}
+
+function featureRows(locale: 'en' | 'zh', values: string[]) {
+  return values.map((value, sortOrder) => ({ locale, value, sortOrder }));
+}
+
+function screenshotRows(values: string[]) {
+  return values.map((url, sortOrder) => ({ url, sortOrder }));
+}
+
+async function replaceToolLists(toolId: string, tool: ToolSeed) {
+  await prisma.toolTag.deleteMany({ where: { toolId } });
+  await prisma.toolTransport.deleteMany({ where: { toolId } });
+  await prisma.toolFeature.deleteMany({ where: { toolId } });
+  await prisma.toolScreenshot.deleteMany({ where: { toolId } });
+
+  for (const data of listRows(tool.tags)) {
+    await prisma.toolTag.create({ data: { toolId, ...data } });
+  }
+  for (const data of listRows(tool.transports)) {
+    await prisma.toolTransport.create({ data: { toolId, ...data } });
+  }
+  for (const data of [...featureRows('en', tool.featuresEn), ...featureRows('zh', tool.featuresZh)]) {
+    await prisma.toolFeature.create({ data: { toolId, ...data } });
+  }
+  for (const data of screenshotRows(tool.screenshots)) {
+    await prisma.toolScreenshot.create({ data: { toolId, ...data } });
+  }
+}
+
 export async function seedMain() {
   console.log('Seeding platforms...');
   for (const platform of PLATFORMS) {
@@ -374,13 +404,8 @@ export async function seedMain() {
         lastCommitAt: toolFields.lastCommitAt,
         author: toolFields.author,
         version: toolFields.version,
-        tags: toolFields.tags,
-        transports: toolFields.transports,
         isFeatured: toolFields.isFeatured,
-        featuresZh: toolFields.featuresZh,
-        featuresEn: toolFields.featuresEn,
         installGuide: toolFields.installGuide as any,
-        screenshots: toolFields.screenshots,
         avgRating: toolFields.avgRating,
         ratingCount: toolFields.ratingCount,
       },
@@ -403,17 +428,13 @@ export async function seedMain() {
         lastCommitAt: toolFields.lastCommitAt,
         author: toolFields.author,
         version: toolFields.version,
-        tags: toolFields.tags,
-        transports: toolFields.transports,
         isFeatured: toolFields.isFeatured,
-        featuresZh: toolFields.featuresZh,
-        featuresEn: toolFields.featuresEn,
         installGuide: toolFields.installGuide as any,
-        screenshots: toolFields.screenshots,
         avgRating: toolFields.avgRating,
         ratingCount: toolFields.ratingCount,
       },
     });
+    await replaceToolLists(createdTool.id, tool);
 
     // Connect categories
     for (const catSlug of categorySlugs) {

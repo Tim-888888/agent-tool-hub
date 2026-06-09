@@ -46,11 +46,16 @@ export async function GET(request: Request) {
   });
 
   // Tools by type
-  const toolsByType = await prisma.tool.groupBy({
-    by: ["type"],
+  const toolsForTypeStats = await prisma.tool.findMany({
     where: { status: { in: ["ACTIVE", "FEATURED"] } },
-    _count: true,
+    select: { type: true },
   });
+  const toolsByType = Object.entries(
+    toolsForTypeStats.reduce<Record<string, number>>((acc, tool) => {
+      acc[tool.type] = (acc[tool.type] ?? 0) + 1;
+      return acc;
+    }, {}),
+  ).map(([type, count]) => ({ type, count }));
 
   return successResponse({
     tools: { total: totalTools, active: activeTools, featured: featuredTools, pending: pendingTools },
@@ -58,7 +63,7 @@ export async function GET(request: Request) {
     reviews: { total: totalReviews },
     submissions: { total: totalSubmissions, pending: pendingSubmissions },
     favorites: { total: totalFavorites },
-    toolsByType: toolsByType.map((t) => ({ type: t.type, count: t._count })),
+    toolsByType,
     recentTools: recentTools.map((t) => ({ ...t, createdAt: t.createdAt.toISOString() })),
     recentUsers: recentUsers.map((u) => ({ ...u, createdAt: u.createdAt.toISOString() })),
   });

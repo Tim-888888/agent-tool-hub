@@ -2,7 +2,8 @@ import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { requireAuth, isAdmin } from "@/lib/auth-helpers";
 import { sendDigestEmail, type DigestTool } from "@/lib/resend";
-import { randomBytes } from "crypto";
+import { requireCronRequest } from "@/lib/cron-auth";
+import { randomHex } from "@/lib/random-token";
 
 export const dynamic = "force-dynamic";
 
@@ -46,14 +47,9 @@ async function ensureProTokens() {
   for (const u of users) {
     await prisma.user.update({
       where: { id: u.id },
-      data: { proToken: randomBytes(32).toString("hex") },
+      data: { proToken: randomHex(32) },
     });
   }
-}
-
-function isCronRequest(request: Request): boolean {
-  const ua = request.headers.get("user-agent") ?? "";
-  return ua.includes("vercel-cron");
 }
 
 // GET: Cron trigger or preview
@@ -88,12 +84,8 @@ export async function GET(request: Request) {
   }
 
   // Cron trigger — verify source
-  if (!isCronRequest(request)) {
-    const secret = url.searchParams.get("secret");
-    if (secret !== process.env.CRON_SECRET) {
-      return errorResponse("Unauthorized", 401);
-    }
-  }
+  const cronError = requireCronRequest(request);
+  if (cronError) return cronError;
 
   return runDigest();
 }

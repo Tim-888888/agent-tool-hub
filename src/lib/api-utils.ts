@@ -1,4 +1,5 @@
 import type { ToolType } from "@/types";
+import { featureValues, relationValues } from "@/lib/tool-relations";
 
 // --- Pagination ---
 
@@ -34,10 +35,10 @@ export function buildWhereClause(searchParams: URLSearchParams): PrismaWhere {
   if (q) {
     conditions.push({
       OR: [
-        { name: { contains: q, mode: "insensitive" } },
-        { description: { contains: q, mode: "insensitive" } },
-        { descriptionZh: { contains: q, mode: "insensitive" } },
-        { tags: { has: q } },
+        { name: { contains: q } },
+        { description: { contains: q } },
+        { descriptionZh: { contains: q } },
+        { tags: { some: { value: { contains: q } } } },
       ],
     });
   }
@@ -139,6 +140,10 @@ export function buildOrderBy(sortParam: string | null): PrismaOrderBy {
 // --- Prisma Include Constant ---
 
 export const TOOL_PRISMA_INCLUDE = {
+  tags: { orderBy: { sortOrder: "asc" } },
+  transports: { orderBy: { sortOrder: "asc" } },
+  features: { orderBy: { sortOrder: "asc" } },
+  screenshots: { orderBy: { sortOrder: "asc" } },
   categories: { include: { category: true } },
   platforms: { include: { platform: true } },
   tagVotes: {
@@ -152,7 +157,19 @@ export const TOOL_PRISMA_INCLUDE = {
 export function mapToolResponse(tool: any): any {
   if (!tool) return null;
 
-  const { categories, platforms, score, syncedAt, npmDownloads, tagVotes, ...rest } = tool;
+  const {
+    categories,
+    platforms,
+    tags,
+    transports,
+    features,
+    screenshots,
+    score,
+    syncedAt,
+    npmDownloads,
+    tagVotes,
+    ...rest
+  } = tool;
 
   // Compute top 3 tags by vote count
   const tagCountMap: Record<string, number> = {};
@@ -168,6 +185,11 @@ export function mapToolResponse(tool: any): any {
 
   return {
     ...rest,
+    tags: relationValues(tags),
+    transports: relationValues(transports),
+    featuresEn: featureValues(features, "en"),
+    featuresZh: featureValues(features, "zh"),
+    screenshots: relationValues(screenshots, "url"),
     categories: Array.isArray(categories)
       ? categories.map((tc: { category: unknown }) => tc.category).filter(Boolean)
       : [],

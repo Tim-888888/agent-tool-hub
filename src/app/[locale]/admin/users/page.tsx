@@ -2,6 +2,8 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import AdminUsersClient from "./AdminUsersClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminUsersPage() {
   await requireAdmin();
 

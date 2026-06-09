@@ -27,12 +27,17 @@ export async function GET(
       return errorResponse("Tool not found", 404);
     }
 
-    const tagCounts = await prisma.toolTagVote.groupBy({
-      by: ["tagSlug"],
+    const votesForTool = await prisma.toolTagVote.findMany({
       where: { toolId: tool.id },
-      _count: { tagSlug: true },
-      orderBy: { _count: { tagSlug: "desc" } },
+      select: { tagSlug: true },
     });
+    const tagCountMap = new Map<string, number>();
+    for (const vote of votesForTool) {
+      tagCountMap.set(vote.tagSlug, (tagCountMap.get(vote.tagSlug) ?? 0) + 1);
+    }
+    const tagCounts = [...tagCountMap.entries()]
+      .map(([tagSlug, count]) => ({ tagSlug, count }))
+      .sort((a, b) => b.count - a.count);
 
     // Get current user's votes if authenticated
     const { session } = await requireAuth().catch(() => ({
@@ -48,10 +53,7 @@ export async function GET(
     }
 
     return successResponse({
-      tags: tagCounts.map((t) => ({
-        tagSlug: t.tagSlug,
-        count: t._count.tagSlug,
-      })),
+      tags: tagCounts,
       userVotes,
     });
   } catch {

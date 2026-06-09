@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 
-import { proxy } from '@/proxy';
+import { proxy } from '@/lib/locale-middleware';
 import type { NextRequest } from 'next/server';
 
 function createClonableUrl(path: string): URL & { clone(): URL & { clone(): ReturnType<typeof createClonableUrl> } } {

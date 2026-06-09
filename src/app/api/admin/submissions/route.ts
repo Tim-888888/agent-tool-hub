@@ -11,6 +11,7 @@ import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser"
 import { computeScore } from "@/lib/scoring"
 import { generateCollectionContent } from "@/lib/translate"
 import { connectAllPlatforms, classifyAndConnectCategories, enrichTranslations } from "@/lib/tool-enrichment"
+import { relationValues, replaceToolRelations } from "@/lib/tool-relations"
 
 export const dynamic = "force-dynamic"
 
@@ -36,11 +37,17 @@ export async function GET(): Promise<Response> {
     where: { status: "PENDING" },
     include: {
       user: { select: { name: true, image: true } },
+      suggestedTags: { orderBy: { sortOrder: "asc" } },
     },
     orderBy: { createdAt: "desc" },
   })
 
-  return successResponse(submissions)
+  return successResponse(
+    submissions.map((submission) => ({
+      ...submission,
+      suggestedTags: relationValues(submission.suggestedTags),
+    })),
+  )
 }
 
 /**
@@ -178,9 +185,7 @@ export async function PATCH(request: Request): Promise<Response> {
       language: repoData.language,
       license: repoData.license?.key ?? null,
       lastCommitAt: new Date(repoData.pushed_at),
-      featuresEn: finalFeaturesEn,
       descriptionZh,
-      featuresZh,
       installGuide: structuredInstallGuide
         ? (typeof structuredInstallGuide === 'string'
           ? { markdown: structuredInstallGuide }
@@ -189,6 +194,10 @@ export async function PATCH(request: Request): Promise<Response> {
       status: "ACTIVE",
       score,
     },
+  })
+  await replaceToolRelations(prisma, tool.id, {
+    featuresEn: finalFeaturesEn,
+    featuresZh,
   })
 
   if (features.length === 0) {

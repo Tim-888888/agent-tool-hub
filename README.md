@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AgentToolHub
 
-## Getting Started
+AgentToolHub is a directory for discovering, reviewing, and managing AI agent tools such as MCP servers, skills, and rules.
 
-First, run the development server:
+This project is configured for deployment on Cloudflare, not Vercel.
+
+## Stack
+
+- Next.js 16 App Router
+- Auth.js with GitHub OAuth
+- Prisma with Cloudflare D1
+- Cloudflare Workers via OpenNext
+- Cloudflare R2 for OpenNext cache assets
+- Cloudflare Workflows and Wrangler for scheduled/background jobs
+
+## Deployment
+
+Production deployment targets Cloudflare Workers using `@opennextjs/cloudflare`.
+
+The runtime database is Cloudflare D1, exposed to the Worker through the `DB` binding. Long-running and scheduled work is handled through the separate jobs Worker and Cloudflare Workflows configuration.
+
+Vercel deployment is no longer the target for this project.
+
+## Common Commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm test
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run the Cloudflare/OpenNext preview locally:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run preview
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Build and deploy the web Worker:
 
-## Learn More
+```bash
+npm run deploy
+```
 
-To learn more about Next.js, take a look at the following resources:
+Build and run a Wrangler dry-run upload:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run upload
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Apply D1 migrations:
 
-## Deploy on Vercel
+```bash
+npm run db:migrate:local
+npm run db:migrate:remote
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Run or deploy the jobs Worker:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run jobs:dev
+npm run jobs:deploy
+```
+
+Generate Cloudflare binding types:
+
+```bash
+npm run cf-typegen
+```
+
+## Cloudflare Configuration
+
+The main Worker configuration lives in `wrangler.jsonc`.
+
+The jobs Worker configuration lives in `wrangler.jobs.jsonc`.
+
+Before deploying, replace placeholder Cloudflare resource IDs with real D1/R2/Workflow resources and set required secrets in Cloudflare:
+
+- `AUTH_SECRET`
+- `AUTH_GITHUB_ID`
+- `AUTH_GITHUB_SECRET`
+- `GITHUB_TOKEN`
+- `GLM_API_KEY`
+- `RESEND_API_KEY`
+- `CRON_SECRET`
+
+## Notes
+
+- D1 migrations live in `migrations/`.
+- Cloudflare migration details are documented in `docs/cloudflare-migration.md`.
+- On Windows, OpenNext may warn about runtime compatibility. Use WSL/Linux or Cloudflare staging for final runtime validation.

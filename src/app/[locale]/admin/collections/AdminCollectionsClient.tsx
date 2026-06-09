@@ -24,6 +24,12 @@ interface Tool {
   stars: number;
 }
 
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error?: string;
+}
+
 type ModalMode = "create" | "edit" | null;
 
 export default function AdminCollectionsClient() {
@@ -52,7 +58,7 @@ export default function AdminCollectionsClient() {
   const fetchCollections = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/collections");
-      const json = await res.json();
+      const json = (await res.json()) as ApiResponse<Collection[]>;
       if (json.success) setCollections(json.data);
     } catch {
       // handle
@@ -95,7 +101,7 @@ export default function AdminCollectionsClient() {
       body: JSON.stringify(form),
     });
 
-    const json = await res.json();
+    const json = (await res.json()) as ApiResponse<Collection>;
     if (json.success) {
       setModalMode(null);
       fetchCollections();
@@ -129,7 +135,7 @@ export default function AdminCollectionsClient() {
       const slug = collections.find((c) => c.id === collectionId)?.slug;
       if (!slug) return;
       const res = await fetch(`/api/collections/${slug}`);
-      const json = await res.json();
+      const json = (await res.json()) as ApiResponse<{ tools: Tool[] }>;
       if (json.success) {
         setCollectionTools(
           json.data.tools.map((t: { id: string; slug: string; name: string; type: string; stars: number }) => ({
@@ -154,7 +160,7 @@ export default function AdminCollectionsClient() {
     }
     try {
       const res = await fetch(`/api/tools?q=${encodeURIComponent(q)}&limit=10`);
-      const json = await res.json();
+      const json = (await res.json()) as ApiResponse<Tool[]>;
       if (json.success) setSearchResults(json.data);
     } catch {
       // handle

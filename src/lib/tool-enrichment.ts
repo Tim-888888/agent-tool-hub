@@ -3,20 +3,21 @@ import { classifyToolCategories, translateToolToChinese, translateInstallGuide }
 
 /**
  * Batch-connect a tool to all platforms (for collection-type tools).
- * Uses createMany with skipDuplicates instead of N+1 upserts.
  */
 export async function connectAllPlatforms(toolId: string): Promise<void> {
   const allPlatforms = await prisma.platform.findMany()
   if (allPlatforms.length === 0) return
-  await prisma.toolPlatform.createMany({
-    data: allPlatforms.map((p) => ({ toolId, platformId: p.id })),
-    skipDuplicates: true,
-  })
+  for (const platform of allPlatforms) {
+    await prisma.toolPlatform.upsert({
+      where: { toolId_platformId: { toolId, platformId: platform.id } },
+      create: { toolId, platformId: platform.id },
+      update: {},
+    })
+  }
 }
 
 /**
  * Classify tool into categories via GLM and batch-connect them.
- * Uses whereIn + createMany instead of N+1 findUnique + upsert.
  */
 export async function classifyAndConnectCategories(
   toolId: string,
@@ -32,10 +33,13 @@ export async function classifyAndConnectCategories(
   })
   if (matchedCategories.length === 0) return
 
-  await prisma.toolCategory.createMany({
-    data: matchedCategories.map((c) => ({ toolId, categoryId: c.id })),
-    skipDuplicates: true,
-  })
+  for (const category of matchedCategories) {
+    await prisma.toolCategory.upsert({
+      where: { toolId_categoryId: { toolId, categoryId: category.id } },
+      create: { toolId, categoryId: category.id },
+      update: {},
+    })
+  }
 }
 
 interface TranslationResult {

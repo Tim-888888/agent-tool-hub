@@ -192,7 +192,7 @@ describe('GET /api/tools', () => {
           AND: expect.arrayContaining([
             {
               OR: expect.arrayContaining([
-                { name: { contains: 'filesystem', mode: 'insensitive' } },
+                { name: { contains: 'filesystem' } },
               ]),
             },
           ]),

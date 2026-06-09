@@ -1,13 +1,19 @@
 import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import AdminSubmissionsClient from "@/components/admin/AdminSubmissionsClient";
+import { relationValues } from "@/lib/tool-relations";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminSubmissionsPage() {
   await requireAdmin();
 
   const submissions = await prisma.submission.findMany({
     where: { status: "PENDING" },
-    include: { user: { select: { name: true, image: true } } },
+    include: {
+      user: { select: { name: true, image: true } },
+      suggestedTags: { orderBy: { sortOrder: "asc" } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -28,6 +34,7 @@ export default async function AdminSubmissionsPage() {
 
   const serializedSubmissions = submissions.map((sub) => ({
     ...sub,
+    suggestedTags: relationValues(sub.suggestedTags),
     createdAt: sub.createdAt.toISOString(),
     reviewedAt: sub.reviewedAt?.toISOString() ?? null,
   }));

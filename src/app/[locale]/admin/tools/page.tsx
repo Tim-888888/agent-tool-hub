@@ -2,6 +2,8 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import AdminToolsClient from "./AdminToolsClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminToolsPage() {
   await requireAdmin();
 

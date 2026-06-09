@@ -2,6 +2,8 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import DashboardClient from "./DashboardClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboardPage() {
   await requireAdmin();
 
@@ -28,10 +30,9 @@ export default async function AdminDashboardPage() {
     prisma.submission.count(),
     prisma.submission.count({ where: { status: "PENDING" } }),
     prisma.favorite.count(),
-    prisma.tool.groupBy({
-      by: ["type"],
+    prisma.tool.findMany({
       where: { status: { in: ["ACTIVE", "FEATURED"] } },
-      _count: true,
+      select: { type: true },
     }),
     prisma.tool.findMany({
       where: { status: { in: ["ACTIVE", "FEATURED"] } },
@@ -52,7 +53,12 @@ export default async function AdminDashboardPage() {
     reviews: { total: totalReviews },
     submissions: { total: totalSubmissions, pending: pendingSubmissions },
     favorites: { total: totalFavorites },
-    toolsByType: toolsByType.map((t) => ({ type: t.type, count: t._count })),
+    toolsByType: Object.entries(
+      toolsByType.reduce<Record<string, number>>((acc, tool) => {
+        acc[tool.type] = (acc[tool.type] ?? 0) + 1;
+        return acc;
+      }, {}),
+    ).map(([type, count]) => ({ type, count })),
     recentTools: recentTools.map((t) => ({ ...t, createdAt: t.createdAt.toISOString() })),
     recentUsers: recentUsers.map((u) => ({
       ...u,

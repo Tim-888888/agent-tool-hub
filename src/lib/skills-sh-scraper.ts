@@ -167,16 +167,16 @@ export async function runSkillsShDiscovery(): Promise<SkillsShDiscoveryResult> {
       };
     });
 
-    try {
-      const result = await prisma.tool.createMany({
-        data: tools,
-        skipDuplicates: true,
-      });
-      created += result.count;
-    } catch (error) {
-      errors.push(
-        `Batch ${Math.floor(i / BATCH_CHUNK)}: ${error instanceof Error ? error.message : String(error)}`,
-      );
+    for (const tool of tools) {
+      try {
+        await prisma.tool.create({ data: tool });
+        created++;
+      } catch (error) {
+        skipped++;
+        errors.push(
+          `${tool.slug}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
   }
 

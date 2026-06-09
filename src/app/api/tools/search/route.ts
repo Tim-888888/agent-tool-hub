@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { ToolStatus, type Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   parsePagination,
@@ -12,8 +13,11 @@ import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 /**
- * Full-text search using PostgreSQL tsvector with LIKE fallback.
- * Uses to_tsvector for English + simple (Chinese) text matching.
+ * D1-compatible search.
+ *
+ * This intentionally avoids PostgreSQL-specific full-text operators. For the first D1 cut we
+ * query normalized tag rows plus LIKE-style text matches; FTS5 can be layered on
+ * later without changing this API shape.
  */
 export async function GET(request: NextRequest) {
   const limited = checkRateLimit(request, RATE_LIMITS.search);
@@ -28,90 +32,28 @@ export async function GET(request: NextRequest) {
       return errorResponse("Query parameter 'q' is required", 400);
     }
 
-    // Try tsvector full-text search
-    let toolIds: string[] = [];
-    let total = 0;
+    const where: Prisma.ToolWhereInput = {
+      status: { in: [ToolStatus.ACTIVE, ToolStatus.FEATURED] },
+      OR: [
+        { name: { contains: q } },
+        { description: { contains: q } },
+        { descriptionZh: { contains: q } },
+        { tags: { some: { value: { contains: q } } } },
+      ],
+    };
 
-    try {
-      const escapedQuery = q.replace(/'/g, "''");
-      const tsQuery = escapedQuery
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((word) => `${word}:*`)
-        .join(" & ");
+    const [tools, total] = await Promise.all([
+      prisma.tool.findMany({
+        where,
+        orderBy: [{ score: "desc" }, { stars: "desc" }],
+        skip,
+        take: limit,
+        include: TOOL_PRISMA_INCLUDE,
+      }),
+      prisma.tool.count({ where }),
+    ]);
 
-      const countResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-        SELECT COUNT(*) as count FROM "Tool"
-        WHERE status IN ('ACTIVE', 'FEATURED')
-        AND (
-          to_tsvector('english', coalesce("name", '') || ' ' || coalesce("description", '')) @@ to_tsquery(${tsQuery})
-          OR to_tsvector('simple', coalesce("name", '') || ' ' || coalesce("description", '') || ' ' || coalesce("descriptionZh", '')) @@ to_tsquery('simple', ${escapedQuery})
-          OR "name" ILIKE ${"%" + q + "%"}
-          OR "description" ILIKE ${"%" + q + "%"}
-        )
-      `;
-      total = Number(countResult[0]?.count ?? 0);
-
-      const rows = await prisma.$queryRaw<Array<{ id: string; rank: number }>>`
-        SELECT t.id,
-          ts_rank(
-            to_tsvector('english', coalesce(t."name", '') || ' ' || coalesce(t."description", '')),
-            to_tsquery(${tsQuery})
-          ) as rank
-        FROM "Tool" t
-        WHERE t.status IN ('ACTIVE', 'FEATURED')
-        AND (
-          to_tsvector('english', coalesce(t."name", '') || ' ' || coalesce(t."description", '')) @@ to_tsquery(${tsQuery})
-          OR to_tsvector('simple', coalesce(t."name", '') || ' ' || coalesce(t."description", '') || ' ' || coalesce(t."descriptionZh", '')) @@ to_tsquery('simple', ${escapedQuery})
-          OR t."name" ILIKE ${"%" + q + "%"}
-          OR t."description" ILIKE ${"%" + q + "%"}
-        )
-        ORDER BY rank DESC, t.stars DESC
-        LIMIT ${limit}
-        OFFSET ${skip}
-      `;
-      toolIds = rows.map((r) => r.id);
-    } catch {
-      // Fallback to Prisma ORM LIKE search
-      const where: Record<string, unknown> = {
-        status: { in: ["ACTIVE", "FEATURED"] },
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { description: { contains: q, mode: "insensitive" } },
-          { descriptionZh: { contains: q, mode: "insensitive" } },
-          { tags: { has: q } },
-        ],
-      };
-
-      const [fallbackTools, fallbackTotal] = await Promise.all([
-        prisma.tool.findMany({
-          where,
-          orderBy: { stars: "desc" },
-          skip,
-          take: limit,
-          include: TOOL_PRISMA_INCLUDE,
-        }),
-        prisma.tool.count({ where }),
-      ]);
-
-      return successResponse(fallbackTools.map(mapToolResponse), {
-        total: fallbackTotal,
-        page,
-        limit,
-        totalPages: Math.ceil(fallbackTotal / limit),
-      });
-    }
-
-    // Fetch full tool data with relations, preserving tsvector rank order
-    const fullTools = await prisma.tool.findMany({
-      where: { id: { in: toolIds } },
-      include: TOOL_PRISMA_INCLUDE,
-    });
-
-    const idOrder = new Map(toolIds.map((id, i) => [id, i]));
-    fullTools.sort((a, b) => (idOrder.get(a.id) ?? 999) - (idOrder.get(b.id) ?? 999));
-
-    return successResponse(fullTools.map(mapToolResponse), {
+    return successResponse(tools.map(mapToolResponse), {
       total,
       page,
       limit,

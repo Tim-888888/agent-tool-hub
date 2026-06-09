@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { relationValues } from "@/lib/tool-relations";
 
 const GLM_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions";
 
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
         type: true,
         stars: true,
         language: true,
-        tags: true,
+        tags: { orderBy: { sortOrder: "asc" } },
         categories: { include: { category: { select: { slug: true, nameEn: true } } } },
       },
       orderBy: { stars: "desc" },
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
       type: t.type,
       stars: t.stars,
       language: t.language,
+      tags: relationValues(t.tags),
       categories: t.categories.map((c) => c.category.slug),
     }));
 
@@ -150,7 +152,7 @@ function getFallbackRecommendations(
     type: string;
     stars: number;
     language: string | null;
-    tags: string[];
+    tags: { value?: string; sortOrder?: number }[] | string[];
     categories: { category: { slug: string } }[];
   }[],
   useCases: string[],
@@ -174,6 +176,9 @@ function getFallbackRecommendations(
     const categoryMatch = toolCategories.some((c) => targetCategories.has(c));
     return {
       ...tool,
+      tags: Array.isArray(tool.tags) && typeof tool.tags[0] === "object"
+        ? relationValues(tool.tags as { value?: string; sortOrder?: number }[])
+        : tool.tags,
       reason: categoryMatch ? "Matches your use case categories" : "Popular tool in the ecosystem",
       matchScore: categoryMatch ? 80 : 60,
     };

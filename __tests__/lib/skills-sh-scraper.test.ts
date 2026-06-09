@@ -1,6 +1,6 @@
 /**
  * Tests for skills.sh scraper module.
- * Tests createMany batch insert pipeline.
+ * Tests D1-compatible insert pipeline.
  */
 
 // Mock fetch globally
@@ -12,7 +12,7 @@ jest.mock('@/lib/db', () => ({
   prisma: {
     tool: {
       findMany: jest.fn(),
-      createMany: jest.fn(),
+      create: jest.fn(),
     },
     skillSyncState: {
       upsert: jest.fn().mockResolvedValue({ id: 'default' }),
@@ -108,9 +108,9 @@ describe('fetchAllSkillsSh', () => {
 });
 
 describe('runSkillsShDiscovery', () => {
-  it('should batch insert skills via createMany', async () => {
+  it('should insert discovered skills', async () => {
     (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
-    (mockPrisma.tool.createMany as jest.Mock).mockResolvedValue({ count: 2 });
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({});
 
     mockFetch.mockResolvedValue({
       ok: true,
@@ -124,17 +124,13 @@ describe('runSkillsShDiscovery', () => {
 
     const result = await runSkillsShDiscovery();
 
-    expect(mockPrisma.tool.createMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        skipDuplicates: true,
-      }),
-    );
+    expect(mockPrisma.tool.create).toHaveBeenCalled();
     expect(result.created).toBeGreaterThanOrEqual(1);
   });
 
   it('should create tools with type=SKILL and status=PENDING', async () => {
     (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
-    (mockPrisma.tool.createMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({});
 
     mockFetch.mockResolvedValue({
       ok: true,
@@ -147,8 +143,8 @@ describe('runSkillsShDiscovery', () => {
 
     await runSkillsShDiscovery();
 
-    const call = (mockPrisma.tool.createMany as jest.Mock).mock.calls[0][0];
-    const tool = call.data[0];
+    const call = (mockPrisma.tool.create as jest.Mock).mock.calls[0][0];
+    const tool = call.data;
     expect(tool.type).toBe('SKILL');
     expect(tool.status).toBe('PENDING');
   });
@@ -171,12 +167,12 @@ describe('runSkillsShDiscovery', () => {
 
     expect(result.skipped).toBeGreaterThanOrEqual(1);
     expect(result.created).toBe(0);
-    expect(mockPrisma.tool.createMany).not.toHaveBeenCalled();
+    expect(mockPrisma.tool.create).not.toHaveBeenCalled();
   });
 
   it('should update SkillSyncState after discovery', async () => {
     (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
-    (mockPrisma.tool.createMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({});
 
     mockFetch.mockResolvedValue({
       ok: true,
@@ -193,7 +189,7 @@ describe('runSkillsShDiscovery', () => {
 
   it('should generate unique slugs per skill from same repo', async () => {
     (mockPrisma.tool.findMany as jest.Mock).mockResolvedValueOnce([]);
-    (mockPrisma.tool.createMany as jest.Mock).mockResolvedValue({ count: 2 });
+    (mockPrisma.tool.create as jest.Mock).mockResolvedValue({});
 
     mockFetch.mockResolvedValue({
       ok: true,
@@ -207,8 +203,7 @@ describe('runSkillsShDiscovery', () => {
 
     await runSkillsShDiscovery();
 
-    const call = (mockPrisma.tool.createMany as jest.Mock).mock.calls[0][0];
-    const slugs = call.data.map((d: any) => d.slug);
+    const slugs = (mockPrisma.tool.create as jest.Mock).mock.calls.map((call) => call[0].data.slug);
     expect(slugs).toContain('skill-owner-repo-skill-a');
     expect(slugs).toContain('skill-owner-repo-skill-b');
     expect(new Set(slugs).size).toBe(slugs.length);

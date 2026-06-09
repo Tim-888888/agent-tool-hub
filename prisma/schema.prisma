@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 enum ToolType {
@@ -26,8 +26,8 @@ enum SubmissionStatus {
 }
 
 model Tool {
-  id            String   @id @default(cuid())
-  slug          String   @unique
+  id            String     @id @default(cuid())
+  slug          String     @unique
   name          String
   description   String
   descriptionZh String?
@@ -39,43 +39,41 @@ model Tool {
   npmPackage    String?
   pypiPackage   String?
 
-  stars         Int      @default(0)
-  forks         Int      @default(0)
-  openIssues    Int      @default(0)
+  stars         Int       @default(0)
+  forks         Int       @default(0)
+  openIssues    Int       @default(0)
   language      String?
   license       String?
   lastCommitAt  DateTime?
   author        String?
   version       String?
 
-  tags          String[]
-  transports    String[]
-
-  isFeatured    Boolean  @default(false)
-  featuresZh    String[]
-  featuresEn    String[]
+  isFeatured    Boolean   @default(false)
   installGuide  Json?
-  screenshots   String[]
 
-  avgRating     Float    @default(0)
-  ratingCount   Int      @default(0)
+  avgRating     Float     @default(0)
+  ratingCount   Int       @default(0)
 
-  score        Float?    // Weighted ranking score (0-100), per D-05/D-08
-  syncedAt     DateTime? // Last successful sync timestamp, per D-15
-  npmDownloads Int?      // Weekly npm download count, per D-04
+  score         Float?
+  syncedAt      DateTime?
+  npmDownloads  Int?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  categories    ToolCategory[]
-  platforms     ToolPlatform[]
-  reviews       Review[]
-  submissions   Submission[]
-  tagVotes      ToolTagVote[]
-  favorites     Favorite[]
+  tags            ToolTag[]
+  transports      ToolTransport[]
+  features        ToolFeature[]
+  screenshots     ToolScreenshot[]
+  categories      ToolCategory[]
+  platforms       ToolPlatform[]
+  reviews         Review[]
+  submissions     Submission[]
+  tagVotes        ToolTagVote[]
+  favorites       Favorite[]
   collectionTools CollectionTool[]
-  subscriptions ToolSubscription[]
-  notifications Notification[]
+  subscriptions   ToolSubscription[]
+  notifications   Notification[]
 
   @@index([type, status])
   @@index([stars])
@@ -85,27 +83,79 @@ model Tool {
   @@index([score])
 }
 
+model ToolTag {
+  id        String @id @default(cuid())
+  toolId    String
+  value     String
+  sortOrder Int    @default(0)
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([toolId, value])
+  @@index([toolId])
+  @@index([value])
+}
+
+model ToolTransport {
+  id        String @id @default(cuid())
+  toolId    String
+  value     String
+  sortOrder Int    @default(0)
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([toolId, value])
+  @@index([toolId])
+  @@index([value])
+}
+
+model ToolFeature {
+  id        String @id @default(cuid())
+  toolId    String
+  locale    String
+  value     String
+  sortOrder Int    @default(0)
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([toolId, locale, sortOrder])
+  @@index([toolId, locale])
+  @@index([locale])
+}
+
+model ToolScreenshot {
+  id        String @id @default(cuid())
+  toolId    String
+  url       String
+  sortOrder Int    @default(0)
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@unique([toolId, url])
+  @@index([toolId])
+}
+
 model Category {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  nameEn      String
-  nameZh      String
-  icon        String
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  nameEn        String
+  nameZh        String
+  icon          String
   descriptionEn String?
   descriptionZh String?
-  order       Int      @default(0)
-  tools       ToolCategory[]
+  order         Int            @default(0)
+  tools         ToolCategory[]
 
   @@index([slug])
 }
 
 model Platform {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String
-  icon        String
-  configKey   String
-  tools       ToolPlatform[]
+  id        String         @id @default(cuid())
+  slug      String         @unique
+  name      String
+  icon      String
+  configKey String
+  tools     ToolPlatform[]
 
   @@index([slug])
 }
@@ -191,16 +241,16 @@ model VerificationToken {
 }
 
 model Review {
-  id          String   @id @default(cuid())
-  toolId      String
-  tool        Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rating      Int
-  content     String?
-  platform    String?
-  useCase     String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  toolId    String
+  tool      Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int
+  content   String?
+  platform  String?
+  useCase   String?
+  createdAt DateTime @default(now())
 
   @@unique([userId, toolId])
   @@index([toolId])
@@ -208,21 +258,33 @@ model Review {
 }
 
 model Submission {
-  id              String           @id @default(cuid())
-  toolId          String?
-  tool            Tool?            @relation(fields: [toolId], references: [id])
-  userId          String?
-  user            User?            @relation(fields: [userId], references: [id])
-  repoUrl         String
-  submitterName   String?
-  submitterEmail  String?
-  notes           String?
-  suggestedTags   String[]
-  status          SubmissionStatus @default(PENDING)
-  createdAt       DateTime         @default(now())
-  reviewedAt      DateTime?
+  id             String                  @id @default(cuid())
+  toolId         String?
+  tool           Tool?                   @relation(fields: [toolId], references: [id])
+  userId         String?
+  user           User?                   @relation(fields: [userId], references: [id])
+  repoUrl        String
+  submitterName  String?
+  submitterEmail String?
+  notes          String?
+  suggestedTags  SubmissionSuggestedTag[]
+  status         SubmissionStatus        @default(PENDING)
+  createdAt      DateTime                @default(now())
+  reviewedAt     DateTime?
 
   @@index([status])
+}
+
+model SubmissionSuggestedTag {
+  id           String @id @default(cuid())
+  submissionId String
+  value        String
+  sortOrder    Int    @default(0)
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, value])
+  @@index([submissionId])
 }
 
 model ToolTagVote {
@@ -232,8 +294,8 @@ model ToolTagVote {
   userId    String
   createdAt DateTime @default(now())
 
-  tool  Tool  @relation(fields: [toolId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([toolId, tagSlug, userId])
   @@index([toolId])
@@ -268,30 +330,42 @@ model NewsletterSubscriber {
 }
 
 model TranslationCache {
-  id            String   @id @default(cuid())
-  sourceHash    String   @unique
+  id            String                    @id @default(cuid())
+  sourceHash    String                    @unique
   sourceText    String
   descriptionZh String?
-  featuresZh    String[]
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  features      TranslationCacheFeature[]
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
 
   @@index([sourceHash])
 }
 
+model TranslationCacheFeature {
+  id                 String @id @default(cuid())
+  translationCacheId String
+  value              String
+  sortOrder          Int    @default(0)
+
+  cache TranslationCache @relation(fields: [translationCacheId], references: [id], onDelete: Cascade)
+
+  @@unique([translationCacheId, sortOrder])
+  @@index([translationCacheId])
+}
+
 model Collection {
-  id            String   @id @default(cuid())
-  slug          String   @unique
+  id            String           @id @default(cuid())
+  slug          String           @unique
   titleEn       String
   titleZh       String
   descriptionEn String?
   descriptionZh String?
   icon          String?
   coverImage    String?
-  isPublished   Boolean  @default(false)
-  sortOrder     Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isPublished   Boolean          @default(false)
+  sortOrder     Int              @default(0)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
   tools         CollectionTool[]
 
   @@index([isPublished])
@@ -306,8 +380,8 @@ model CollectionTool {
   noteZh       String?
   addedAt      DateTime @default(now())
 
-  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-  tool         Tool       @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  tool       Tool       @relation(fields: [toolId], references: [id], onDelete: Cascade)
 
   @@id([collectionId, toolId])
   @@index([collectionId])
@@ -331,7 +405,7 @@ model Notification {
   id        String   @id @default(cuid())
   userId    String
   toolId    String
-  type      String   // "version_update", "new_review", "status_change"
+  type      String
   title     String
   message   String
   read      Boolean  @default(false)
@@ -346,13 +420,13 @@ model Notification {
 }
 
 model DigestSend {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sentAt     DateTime @default(now())
-  toolCount  Int
-  status     String   @default("sent")
-  error      String?
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentAt    DateTime @default(now())
+  toolCount Int
+  status    String   @default("sent")
+  error     String?
 
   @@index([userId])
   @@index([sentAt])
@@ -363,4 +437,20 @@ model SkillSyncState {
   lastSyncAt  DateTime @default(now())
   totalRepos  Int      @default(0)
   syncedRepos Int      @default(0)
+}
+
+model JobRun {
+  id          String    @id @default(cuid())
+  workflow    String
+  status      String    @default("queued")
+  cursor      String?
+  payload     Json?
+  error       String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workflow, status])
+  @@index([createdAt])
 }

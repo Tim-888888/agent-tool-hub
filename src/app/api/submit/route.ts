@@ -82,7 +82,9 @@ export async function POST(request: Request): Promise<Response> {
       userId: session!.user!.id,
       submitterName: session!.user!.name ?? null,
       notes: validated.notes,
-      suggestedTags: validated.suggestedTags ?? [],
+      suggestedTags: {
+        create: (validated.suggestedTags ?? []).map((value, sortOrder) => ({ value, sortOrder })),
+      },
       status: "PENDING",
     },
   })

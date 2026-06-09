@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import { ToolStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 
@@ -17,10 +18,10 @@ export async function GET(request: NextRequest) {
 
     const tools = await prisma.tool.findMany({
       where: {
-        status: { in: ["ACTIVE", "FEATURED"] },
+        status: { in: [ToolStatus.ACTIVE, ToolStatus.FEATURED] },
         OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { description: { contains: q, mode: "insensitive" } },
+          { name: { contains: q } },
+          { description: { contains: q } },
         ],
       },
       select: {

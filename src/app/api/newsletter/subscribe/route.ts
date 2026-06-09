@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
-import { randomBytes } from "crypto";
+import { randomHex } from "@/lib/random-token";
 
 export async function POST(request: Request) {
   try {
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       return successResponse({ action: "already_subscribed" });
     }
 
-    const token = randomBytes(32).toString("hex");
+    const token = randomHex(32);
 
     await prisma.newsletterSubscriber.create({
       data: {

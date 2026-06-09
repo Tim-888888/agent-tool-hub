@@ -12,6 +12,8 @@ jest.mock('@prisma/client', () => {
   const mockPlatformUpsert = jest.fn().mockResolvedValue({ id: 'plat-id' });
   const mockCategoryUpsert = jest.fn().mockResolvedValue({ id: 'cat-id' });
   const mockToolUpsert = jest.fn().mockResolvedValue({ id: 'tool-id' });
+  const mockListDeleteMany = jest.fn().mockResolvedValue({ count: 0 });
+  const mockListCreate = jest.fn().mockResolvedValue({ id: 'list-id' });
   const mockToolCategoryUpsert = jest.fn().mockResolvedValue({ id: 'tc-id' });
   const mockToolPlatformUpsert = jest.fn().mockResolvedValue({ id: 'tp-id' });
   const mockCategoryFindUnique = jest.fn().mockResolvedValue({ id: 'cat-found-id' });
@@ -25,6 +27,10 @@ jest.mock('@prisma/client', () => {
       platform: { upsert: mockPlatformUpsert, findUnique: mockPlatformFindUnique, count: mockCount },
       category: { upsert: mockCategoryUpsert, findUnique: mockCategoryFindUnique, count: mockCount },
       tool: { upsert: mockToolUpsert, count: mockCount },
+      toolTag: { deleteMany: mockListDeleteMany, create: mockListCreate },
+      toolTransport: { deleteMany: mockListDeleteMany, create: mockListCreate },
+      toolFeature: { deleteMany: mockListDeleteMany, create: mockListCreate },
+      toolScreenshot: { deleteMany: mockListDeleteMany, create: mockListCreate },
       toolCategory: { upsert: mockToolCategoryUpsert },
       toolPlatform: { upsert: mockToolPlatformUpsert },
       $disconnect: mockDisconnect,
@@ -35,6 +41,7 @@ jest.mock('@prisma/client', () => {
       mockPlatformUpsert,
       mockCategoryUpsert,
       mockToolUpsert,
+      mockListCreate,
       mockToolCategoryUpsert,
       mockToolPlatformUpsert,
       mockDisconnect,
@@ -43,10 +50,6 @@ jest.mock('@prisma/client', () => {
   return mod;
 });
 
-jest.mock('@prisma/adapter-pg', () => ({
-  PrismaPg: jest.fn().mockImplementation(() => ({})),
-}));
-
 // Extract mock references after jest.mock has been set up
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { __mocks } = require('@prisma/client');
@@ -54,6 +57,7 @@ const {
   mockPlatformUpsert,
   mockCategoryUpsert,
   mockToolUpsert,
+  mockListCreate,
   mockToolCategoryUpsert,
   mockToolPlatformUpsert,
   mockDisconnect,
@@ -87,6 +91,11 @@ describe('seed script', () => {
     // Total join table calls should exceed entity count
     const joinCalls = mockToolCategoryUpsert.mock.calls.length + mockToolPlatformUpsert.mock.calls.length;
     expect(joinCalls).toBeGreaterThan(0);
+  });
+
+  it('creates normalized list rows for D1 relation tables', async () => {
+    await seedMain();
+    expect(mockListCreate).toHaveBeenCalled();
   });
 
   it('seedMain completes without error (disconnect is caller responsibility)', async () => {

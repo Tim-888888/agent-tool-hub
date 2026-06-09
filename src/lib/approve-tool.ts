@@ -10,6 +10,7 @@ import { computeScore } from "@/lib/scoring";
 import { generateCollectionContent } from "@/lib/translate";
 import { connectAllPlatforms, classifyAndConnectCategories, enrichTranslations } from "@/lib/tool-enrichment";
 import { withRetry } from "@/lib/retry";
+import { featureValues, replaceToolRelations, type ToolRelationLists } from "@/lib/tool-relations";
 
 export interface ApproveResult {
   success: boolean;
@@ -109,9 +110,7 @@ export async function approveSubmission(submissionId: string): Promise<ApproveRe
       language: repoData.language,
       license: repoData.license?.key ?? null,
       lastCommitAt: new Date(repoData.pushed_at),
-      featuresEn: finalFeaturesEn,
       descriptionZh,
-      featuresZh,
       installGuide: structuredInstallGuide
         ? typeof structuredInstallGuide === "string"
           ? { markdown: structuredInstallGuide }
@@ -120,6 +119,10 @@ export async function approveSubmission(submissionId: string): Promise<ApproveRe
       status: "ACTIVE",
       score,
     },
+  });
+  await replaceToolRelations(prisma, tool.id, {
+    featuresEn: finalFeaturesEn,
+    featuresZh,
   });
 
   if (features.length === 0) {
@@ -164,7 +167,10 @@ export async function rejectSubmission(submissionId: string): Promise<ApproveRes
  * Approve an auto-discovered tool: enrich with GitHub data, translate, set ACTIVE.
  */
 export async function approveDiscoveredTool(toolId: string): Promise<ApproveResult> {
-  const tool = await prisma.tool.findUnique({ where: { id: toolId } });
+  const tool = await prisma.tool.findUnique({
+    where: { id: toolId },
+    include: { features: { orderBy: { sortOrder: "asc" } } },
+  });
   if (!tool || tool.status !== "PENDING") {
     return { success: false, error: "Tool not found or not PENDING" };
   }
@@ -208,6 +214,8 @@ export async function approveDiscoveredTool(toolId: string): Promise<ApproveResu
     : tool.score;
 
   const updateData: Record<string, unknown> = { status: "ACTIVE", score };
+  const relationUpdates: ToolRelationLists = {};
+  const existingFeaturesEn = featureValues(tool.features, "en");
 
   if (repoData) {
     updateData.stars = repoData.stargazers_count;
@@ -219,17 +227,17 @@ export async function approveDiscoveredTool(toolId: string): Promise<ApproveResu
     if (repoData.description) updateData.description = repoData.description;
   }
 
-  if (features.length > 0 && (!tool.featuresEn || tool.featuresEn.length === 0)) {
-    updateData.featuresEn = features;
-  } else if (!tool.featuresEn || tool.featuresEn.length === 0) {
+  if (features.length > 0 && existingFeaturesEn.length === 0) {
+    relationUpdates.featuresEn = features;
+  } else if (existingFeaturesEn.length === 0) {
     const collectionContent = await generateCollectionContent(
       tool.name,
       (updateData.description as string) ?? tool.description,
       tool.repoUrl,
       readmeContent,
     );
-    updateData.featuresEn = collectionContent.featuresEn;
-    updateData.featuresZh = collectionContent.featuresZh;
+    relationUpdates.featuresEn = collectionContent.featuresEn;
+    relationUpdates.featuresZh = collectionContent.featuresZh;
     if (!tool.installGuide && !installGuide) {
       updateData.installGuide = {
         en: collectionContent.installGuideEn,
@@ -250,14 +258,14 @@ export async function approveDiscoveredTool(toolId: string): Promise<ApproveResu
 
   // Translation
   const finalDescription = (updateData.description as string) ?? tool.description;
-  const finalFeatures = ((updateData.featuresEn as string[]) ?? tool.featuresEn) as string[];
+  const finalFeatures = relationUpdates.featuresEn ?? existingFeaturesEn;
 
   const { translateToolToChinese } = await import("@/lib/translate");
 
-  if (!(updateData.featuresZh as string[])?.length) {
+  if (!relationUpdates.featuresZh?.length) {
     const translation = await translateToolToChinese(finalDescription, finalFeatures);
     if (translation.descriptionZh) updateData.descriptionZh = translation.descriptionZh;
-    if (translation.featuresZh.length > 0) updateData.featuresZh = translation.featuresZh;
+    if (translation.featuresZh.length > 0) relationUpdates.featuresZh = translation.featuresZh;
   } else if (!updateData.descriptionZh) {
     const translation = await translateToolToChinese(finalDescription, []);
     if (translation.descriptionZh) updateData.descriptionZh = translation.descriptionZh;
@@ -267,6 +275,7 @@ export async function approveDiscoveredTool(toolId: string): Promise<ApproveResu
     where: { id: toolId },
     data: updateData,
   });
+  await replaceToolRelations(prisma, toolId, relationUpdates);
 
   if (features.length === 0) {
     await connectAllPlatforms(toolId);

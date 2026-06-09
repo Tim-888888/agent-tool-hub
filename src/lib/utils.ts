@@ -5,7 +5,8 @@ export function formatStars(stars: number): string {
   return String(stars);
 }
 
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string | Date | null | undefined): string {
+  if (!dateString) return 'N/A';
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -14,30 +15,37 @@ export function formatDate(dateString: string): string {
   });
 }
 
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export function getToolTypeColor(type: string): string {
   switch (type) {
     case 'MCP_SERVER':
-      return '#3b82f6';
+      return 'var(--color-mcp)';
     case 'SKILL':
-      return '#8b5cf6';
+      return 'var(--color-skill)';
     case 'RULE':
-      return '#f59e0b';
+      return 'var(--color-rule)';
     default:
-      return '#6e6e73';
+      return 'var(--text-secondary)';
   }
 }
 
 export function getPlatformColor(slug: string): string {
   const colors: Record<string, string> = {
-    'claude-code': '#d97706',
-    'cursor': '#3b82f6',
-    'windsurf': '#06b6d4',
-    'copilot': '#6e40c9',
-    'cline': '#10b981',
-    'aider': '#ef4444',
-    'continue': '#8b5cf6',
+    'claude-code': 'var(--color-claude)',
+    'cursor': 'var(--color-cursor)',
+    'windsurf': 'var(--color-windsurf)',
+    'copilot': 'var(--color-copilot)',
+    'cline': 'var(--color-cline)',
+    'aider': 'var(--color-aider)',
+    'continue': 'var(--color-continue)',
   };
-  return colors[slug] ?? '#6e6e73';
+  return colors[slug] ?? 'var(--text-secondary)';
 }
 
 export function cn(...classes: (string | boolean | undefined | null)[]): string {

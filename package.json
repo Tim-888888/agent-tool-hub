@@ -6,26 +6,34 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "preview": "opennextjs-cloudflare build && wrangler dev",
+    "deploy": "opennextjs-cloudflare build && wrangler deploy",
+    "upload": "opennextjs-cloudflare build && wrangler deploy --dry-run",
+    "jobs:dev": "wrangler dev --config wrangler.jobs.jsonc",
+    "jobs:deploy": "wrangler deploy --config wrangler.jobs.jsonc",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv src/env.d.ts",
+    "db:migrate:local": "wrangler d1 migrations apply agent-tool-hub --local",
+    "db:migrate:remote": "wrangler d1 migrations apply agent-tool-hub --remote",
     "lint": "eslint",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "postinstall": "npx prisma generate"
+    "postinstall": "prisma generate"
   },
   "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.1",
     "@formatjs/intl-localematcher": "^0.8.2",
-    "@prisma/adapter-pg": "^7.6.0",
+    "@opennextjs/cloudflare": "^1.12.0",
+    "@prisma/adapter-d1": "^7.6.0",
     "@prisma/client": "^7.6.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",
     "negotiator": "^1.0.0",
-    "next": "16.2.2",
+    "next": "16.2.6",
     "next-auth": "^5.0.0-beta.30",
-    "pg": "^8.20.0",
     "prisma": "^7.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -37,18 +45,19 @@
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@cloudflare/workers-types": "^4.20260520.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
-    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.2",
+    "eslint-config-next": "16.2.6",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "tailwindcss": "^4",
     "ts-jest": "^29.4.9",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.18.0"
   }
 }

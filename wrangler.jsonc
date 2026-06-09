@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "agent-tool-hub",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-05-21",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agent-tool-hub",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "NEXT_INC_CACHE_R2_BUCKET",
+      "bucket_name": "agent-tool-hub-next-cache"
+    }
+  ],
+  "vars": {
+    "AGENT_TOOL_HUB_APP_URL": "https://agent-tool-hub.example.com"
+  }
+}

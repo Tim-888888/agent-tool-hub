@@ -3,14 +3,13 @@ import { prisma } from "@/lib/db";
 import { approveDiscoveredTool } from "@/lib/approve-tool";
 import { translateToolToChinese, generateCollectionContent, translateInstallGuide } from "@/lib/translate";
 import { classifyAndConnectCategories, connectAllPlatforms } from "@/lib/tool-enrichment";
-import { parseRepoUrl, fetchRepoData, fetchReadme } from "@/lib/github-client";
+import { parseRepoUrl, fetchReadme } from "@/lib/github-client";
 import { extractFeatures, extractInstallGuide } from "@/lib/readme-parser";
 import { withRetry } from "@/lib/retry";
-import { computeScore } from "@/lib/scoring";
+import { requireCronRequest } from "@/lib/cron-auth";
+import { featureValues, replaceToolRelations, type ToolRelationLists } from "@/lib/tool-relations";
 
 export const dynamic = "force-dynamic";
-
-const CRON_SECRET = process.env.CRON_SECRET;
 
 /** Max tools to process per run. ~8-12s/tool with GitHub + GLM calls, must fit in 300s maxDuration. */
 const BATCH_SIZE = 15;
@@ -21,17 +20,8 @@ const BATCH_SIZE = 15;
  * GLM calls are rate-limited to concurrency 2 via translate.ts module-level limiter.
  */
 export async function GET(request: Request): Promise<Response> {
-  if (CRON_SECRET) {
-    const authHeader = request.headers.get("authorization");
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      return errorResponse("Unauthorized", 401);
-    }
-  } else {
-    const userAgent = request.headers.get("user-agent") ?? "";
-    if (!userAgent.includes("vercel-cron")) {
-      return errorResponse("Unauthorized", 401);
-    }
-  }
+  const cronError = requireCronRequest(request);
+  if (cronError) return cronError;
 
   return handleEnrich();
 }
@@ -87,12 +77,18 @@ async function handleEnrich(): Promise<Response> {
       },
       orderBy: { score: "desc" },
       take: Math.max(0, BATCH_SIZE - processed),
-      select: { id: true, name: true, description: true, repoUrl: true, featuresEn: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        repoUrl: true,
+        features: { orderBy: { sortOrder: "asc" } },
+      },
     });
 
     for (const tool of unstranslatedTools) {
       try {
-        await enrichTranslationsOnly(tool);
+        await enrichTranslationsOnly({ ...tool, featuresEn: featureValues(tool.features, "en") });
         enriched++;
         processed++;
       } catch (err) {
@@ -104,15 +100,16 @@ async function handleEnrich(): Promise<Response> {
     // Priority 3: ACTIVE skills missing featuresEn (README enrichment)
     if (processed < BATCH_SIZE) {
       const limit = Math.max(0, BATCH_SIZE - processed);
-      const rawUnenriched = await prisma.$queryRaw<Array<{ id: string; name: string; description: string; repoUrl: string }>>`
-        SELECT id, name, description, "repoUrl" FROM "Tool"
-        WHERE type = 'SKILL' AND status IN ('ACTIVE', 'FEATURED')
-          AND ("featuresEn" IS NULL OR array_length("featuresEn", 1) IS NULL)
-        ORDER BY score DESC LIMIT ${limit}
-      `;
-      const unenrichedTools = rawUnenriched.map(t => ({
-        id: t.id, name: t.name, description: t.description, repoUrl: t.repoUrl,
-      }));
+      const unenrichedTools = await prisma.tool.findMany({
+        where: {
+          type: "SKILL",
+          status: { in: ["ACTIVE", "FEATURED"] },
+          features: { none: { locale: "en" } },
+        },
+        orderBy: { score: "desc" },
+        take: limit,
+        select: { id: true, name: true, description: true, repoUrl: true },
+      });
 
       for (const tool of unenrichedTools) {
         try {
@@ -156,16 +153,17 @@ async function enrichTranslationsOnly(tool: {
   const installGuide = readmeContent ? extractInstallGuide(readmeContent) : null;
 
   const updateData: Record<string, unknown> = {};
+  const relationUpdates: ToolRelationLists = {};
 
   // Features
   if (features.length > 0 && (!tool.featuresEn || tool.featuresEn.length === 0)) {
-    updateData.featuresEn = features;
+    relationUpdates.featuresEn = features;
   } else if (!tool.featuresEn || tool.featuresEn.length === 0) {
     const collectionContent = await generateCollectionContent(
       tool.name, tool.description, tool.repoUrl, readmeContent,
     );
-    updateData.featuresEn = collectionContent.featuresEn;
-    updateData.featuresZh = collectionContent.featuresZh;
+    relationUpdates.featuresEn = collectionContent.featuresEn;
+    relationUpdates.featuresZh = collectionContent.featuresZh;
     if (!installGuide) {
       updateData.installGuide = {
         en: collectionContent.installGuideEn,
@@ -175,11 +173,11 @@ async function enrichTranslationsOnly(tool: {
   }
 
   // Translation
-  const finalFeatures = ((updateData.featuresEn as string[]) ?? tool.featuresEn) ?? [];
-  if (!(updateData.featuresZh as string[])?.length) {
+  const finalFeatures = relationUpdates.featuresEn ?? tool.featuresEn ?? [];
+  if (!relationUpdates.featuresZh?.length) {
     const translation = await translateToolToChinese(tool.description, finalFeatures);
     if (translation.descriptionZh) updateData.descriptionZh = translation.descriptionZh;
-    if (translation.featuresZh.length > 0) updateData.featuresZh = translation.featuresZh;
+    if (translation.featuresZh.length > 0) relationUpdates.featuresZh = translation.featuresZh;
   }
 
   // Install guide
@@ -189,6 +187,7 @@ async function enrichTranslationsOnly(tool: {
   }
 
   await prisma.tool.update({ where: { id: tool.id }, data: updateData });
+  await replaceToolRelations(prisma, tool.id, relationUpdates);
 
   // Categories
   await classifyAndConnectCategories(tool.id, tool.name, tool.description, readmeContent);
@@ -215,19 +214,20 @@ async function enrichReadmeContent(tool: {
   const installGuide = extractInstallGuide(readmeContent);
 
   const updateData: Record<string, unknown> = {};
+  const relationUpdates: ToolRelationLists = {};
 
   if (features.length > 0) {
-    updateData.featuresEn = features;
+    relationUpdates.featuresEn = features;
     const translation = await translateToolToChinese("", features);
     if (translation.featuresZh.length > 0) {
-      updateData.featuresZh = translation.featuresZh;
+      relationUpdates.featuresZh = translation.featuresZh;
     }
   } else {
     const collectionContent = await generateCollectionContent(
       tool.name, tool.description, tool.repoUrl, readmeContent,
     );
-    updateData.featuresEn = collectionContent.featuresEn;
-    updateData.featuresZh = collectionContent.featuresZh;
+    relationUpdates.featuresEn = collectionContent.featuresEn;
+    relationUpdates.featuresZh = collectionContent.featuresZh;
     if (!installGuide) {
       updateData.installGuide = {
         en: collectionContent.installGuideEn,
@@ -242,6 +242,7 @@ async function enrichReadmeContent(tool: {
   }
 
   await prisma.tool.update({ where: { id: tool.id }, data: updateData });
+  await replaceToolRelations(prisma, tool.id, relationUpdates);
 
   classifyAndConnectCategories(tool.id, tool.name, tool.description, readmeContent).catch(() => {});
 }

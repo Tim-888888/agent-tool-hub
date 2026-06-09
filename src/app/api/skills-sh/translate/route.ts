@@ -1,6 +1,7 @@
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { prisma } from "@/lib/db";
 import { translateToolToChinese } from "@/lib/translate";
+import { replaceToolRelations } from "@/lib/tool-relations";
 
 export const dynamic = "force-dynamic";
 
@@ -53,9 +54,11 @@ async function handleTranslate(): Promise<Response> {
         where: { id: tool.id },
         data: {
           descriptionZh: translation.descriptionZh || null,
-          featuresZh: translation.featuresZh.length > 0 ? translation.featuresZh : undefined,
         },
       });
+      if (translation.featuresZh.length > 0) {
+        await replaceToolRelations(prisma, tool.id, { featuresZh: translation.featuresZh });
+      }
       translated++;
     } catch (err) {
       errors.push(`${tool.name}: ${err instanceof Error ? err.message : String(err)}`);

@@ -8,6 +8,8 @@ import { computeScore } from "@/lib/scoring";
 import { requireAuth, isAdmin } from "@/lib/auth-helpers";
 import { revalidatePath } from "next/cache";
 import { translateToolToChinese } from "@/lib/translate";
+import { requireCronRequest } from "@/lib/cron-auth";
+import { featureValues, replaceToolRelations, type ToolRelationLists } from "@/lib/tool-relations";
 
 export const dynamic = "force-dynamic";
 
@@ -17,20 +19,34 @@ interface SyncResult {
   error?: string;
 }
 
+function safelyRevalidateRootLayout() {
+  try {
+    revalidatePath("/", "layout");
+  } catch (error) {
+    if (process.env.NODE_ENV !== "test") {
+      throw error;
+    }
+  }
+}
+
+function legacyStringList(source: unknown, key: "featuresEn" | "featuresZh"): string[] {
+  if (!source || typeof source !== "object") {
+    return [];
+  }
+
+  const value = (source as Record<string, unknown>)[key];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function hasLegacyFeatureArrays(source: unknown): boolean {
+  return Boolean(source && typeof source === "object" && "featuresEn" in source);
+}
+
 export async function GET(request: Request) {
   const startTime = Date.now();
 
-  // Log non-cron invocations for monitoring
-  const userAgent = request.headers.get("user-agent") ?? "";
-  if (!userAgent.includes("vercel-cron")) {
-    console.warn(
-      JSON.stringify({
-        event: "sync_non_cron",
-        userAgent,
-        message: "Sync triggered outside Vercel Cron",
-      }),
-    );
-  }
+  const cronError = requireCronRequest(request);
+  if (cronError) return cronError;
 
   try {
     // Per D-01: only sync existing tools (ACTIVE or FEATURED)
@@ -114,8 +130,23 @@ export async function GET(request: Request) {
         // Do NOT overwrite hand-crafted structured data (installGuide, featuresZh).
         const existing = await prisma.tool.findUnique({
           where: { id: tool.id },
-          select: { installGuide: true, featuresEn: true, featuresZh: true, version: true, status: true, lastCommitAt: true },
+          select: {
+            installGuide: true,
+            version: true,
+            status: true,
+            lastCommitAt: true,
+            features: { orderBy: { sortOrder: "asc" } },
+          },
         });
+        const featureRowsEn = featureValues(existing?.features, "en");
+        const featureRowsZh = featureValues(existing?.features, "zh");
+        const existingFeaturesEn = featureRowsEn.length > 0
+          ? featureRowsEn
+          : legacyStringList(existing, "featuresEn");
+        const existingFeaturesZh = featureRowsZh.length > 0
+          ? featureRowsZh
+          : legacyStringList(existing, "featuresZh");
+        const relationUpdates: ToolRelationLists = {};
 
         // Build update payload: only sync-enriched fields
         const updateData: Record<string, unknown> = {
@@ -136,8 +167,12 @@ export async function GET(request: Request) {
         }
 
         // Only update featuresEn if sync extracted new ones AND existing is empty
-        if (features.length > 0 && existing && (!existing.featuresEn || existing.featuresEn.length === 0)) {
-          updateData.featuresEn = features;
+        if (features.length > 0 && existing && existingFeaturesEn.length === 0) {
+          if (hasLegacyFeatureArrays(existing)) {
+            updateData.featuresEn = features;
+          } else {
+            relationUpdates.featuresEn = features;
+          }
         }
 
         // Only set installGuide from README if existing is null/empty
@@ -150,6 +185,7 @@ export async function GET(request: Request) {
           where: { id: tool.id },
           data: updateData,
         });
+        await replaceToolRelations(prisma, tool.id, relationUpdates);
 
         // Notify subscribers on new commits (fire-and-forget)
         const oldCommitAt = existing?.lastCommitAt;
@@ -161,33 +197,35 @@ export async function GET(request: Request) {
             select: { userId: true },
           }).then((subs) => {
             if (subs.length === 0) return;
-            prisma.notification.createMany({
-              data: subs.map((s) => ({
+            Promise.all(subs.map((s) => prisma.notification.create({
+              data: {
                 userId: s.userId,
                 toolId: tool.id,
                 type: "version_update",
                 title: `${tool.name} updated`,
                 message: `${tool.name} has new commits since last sync`,
-              })),
-            }).catch(() => {});
+              },
+            }))).catch(() => {});
           }).catch(() => {});
         }
 
         // Translate to Chinese if descriptionZh is missing (fire-and-forget)
-        if (!existing?.featuresZh?.length) {
+        if (existingFeaturesZh.length === 0) {
           const currentDesc = (updateData.description as string) || "";
-          const currentFeatures = (updateData.featuresEn as string[]) || [];
+          const currentFeatures = relationUpdates.featuresEn ?? existingFeaturesEn;
           if (currentDesc || currentFeatures.length > 0) {
             translateToolToChinese(currentDesc, currentFeatures)
               .then(async (translation) => {
                 if (translation.descriptionZh || translation.featuresZh.length > 0) {
-                  await prisma.tool.update({
-                    where: { id: tool.id },
-                    data: {
-                      ...(translation.descriptionZh ? { descriptionZh: translation.descriptionZh } : {}),
-                      ...(translation.featuresZh.length > 0 ? { featuresZh: translation.featuresZh } : {}),
-                    },
-                  });
+                  if (translation.descriptionZh) {
+                    await prisma.tool.update({
+                      where: { id: tool.id },
+                      data: { descriptionZh: translation.descriptionZh },
+                    });
+                  }
+                  if (translation.featuresZh.length > 0) {
+                    await replaceToolRelations(prisma, tool.id, { featuresZh: translation.featuresZh });
+                  }
                 }
               })
               .catch(() => {}); // Non-critical
@@ -221,7 +259,7 @@ export async function GET(request: Request) {
     );
 
     // Trigger on-demand revalidation so ISR pages pick up fresh data immediately
-    revalidatePath("/", "layout");
+    safelyRevalidateRootLayout();
 
     return successResponse({ results, synced, failed, durationMs });
   } catch (error) {
@@ -295,8 +333,20 @@ export async function POST() {
 
         const existing = await prisma.tool.findUnique({
           where: { id: tool.id },
-          select: { installGuide: true, featuresEn: true, featuresZh: true },
+          select: {
+            installGuide: true,
+            features: { orderBy: { sortOrder: "asc" } },
+          },
         });
+        const featureRowsEn = featureValues(existing?.features, "en");
+        const featureRowsZh = featureValues(existing?.features, "zh");
+        const existingFeaturesEn = featureRowsEn.length > 0
+          ? featureRowsEn
+          : legacyStringList(existing, "featuresEn");
+        const existingFeaturesZh = featureRowsZh.length > 0
+          ? featureRowsZh
+          : legacyStringList(existing, "featuresZh");
+        const relationUpdates: ToolRelationLists = {};
 
         const updateData: Record<string, unknown> = {
           stars: repoData.stargazers_count,
@@ -311,30 +361,37 @@ export async function POST() {
         };
 
         if (repoData.description) updateData.description = repoData.description;
-        if (features.length > 0 && existing && (!existing.featuresEn || existing.featuresEn.length === 0)) {
-          updateData.featuresEn = features;
+        if (features.length > 0 && existing && existingFeaturesEn.length === 0) {
+          if (hasLegacyFeatureArrays(existing)) {
+            updateData.featuresEn = features;
+          } else {
+            relationUpdates.featuresEn = features;
+          }
         }
         if (installGuide && existing && !existing.installGuide) {
           updateData.installGuide = { markdown: installGuide };
         }
 
         await prisma.tool.update({ where: { id: tool.id }, data: updateData });
+        await replaceToolRelations(prisma, tool.id, relationUpdates);
 
         // Translate to Chinese if descriptionZh is missing (fire-and-forget)
-        if (!existing?.featuresZh?.length) {
+        if (existingFeaturesZh.length === 0) {
           const currentDesc = (updateData.description as string) || "";
-          const currentFeatures = (updateData.featuresEn as string[]) || [];
+          const currentFeatures = relationUpdates.featuresEn ?? existingFeaturesEn;
           if (currentDesc || currentFeatures.length > 0) {
             translateToolToChinese(currentDesc, currentFeatures)
               .then(async (translation) => {
                 if (translation.descriptionZh || translation.featuresZh.length > 0) {
-                  await prisma.tool.update({
-                    where: { id: tool.id },
-                    data: {
-                      ...(translation.descriptionZh ? { descriptionZh: translation.descriptionZh } : {}),
-                      ...(translation.featuresZh.length > 0 ? { featuresZh: translation.featuresZh } : {}),
-                    },
-                  });
+                  if (translation.descriptionZh) {
+                    await prisma.tool.update({
+                      where: { id: tool.id },
+                      data: { descriptionZh: translation.descriptionZh },
+                    });
+                  }
+                  if (translation.featuresZh.length > 0) {
+                    await replaceToolRelations(prisma, tool.id, { featuresZh: translation.featuresZh });
+                  }
                 }
               })
               .catch(() => {});
@@ -357,7 +414,7 @@ export async function POST() {
 
     console.log(JSON.stringify({ event: "sync_complete", trigger: "manual", synced, failed, durationMs }));
 
-    revalidatePath("/", "layout");
+    safelyRevalidateRootLayout();
 
     return successResponse({ results, synced, failed, durationMs });
   } catch (error) {

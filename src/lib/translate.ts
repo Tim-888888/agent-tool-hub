@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { ConcurrencyLimiter } from "@/lib/rate-limiter"
+import { listToCreateRows, relationValues } from "@/lib/tool-relations"
 
 const GLM_API_URL = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 const DEFAULT_MODEL = "glm-4-flash"
@@ -10,6 +11,15 @@ const glmLimiter = new ConcurrencyLimiter(2)
 interface TranslationResult {
   descriptionZh: string | null
   featuresZh: string[]
+}
+
+function legacyFeaturesZh(source: unknown): string[] {
+  if (!source || typeof source !== "object") {
+    return []
+  }
+
+  const value = (source as Record<string, unknown>).featuresZh
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
 }
 
 /**
@@ -187,11 +197,15 @@ export async function translateToolToChinese(
   try {
     const cached = await prisma.translationCache.findUnique({
       where: { sourceHash },
+      include: { features: { orderBy: { sortOrder: "asc" } } },
     })
     if (cached) {
+      const cachedFeatures = relationValues(cached.features)
       return {
         descriptionZh: cached.descriptionZh,
-        featuresZh: cached.featuresZh,
+        featuresZh: cachedFeatures.length > 0
+          ? cachedFeatures
+          : legacyFeaturesZh(cached),
       }
     }
   } catch {
@@ -267,13 +281,18 @@ Rules:
           where: { sourceHash },
           update: {
             descriptionZh: result.descriptionZh,
-            featuresZh: result.featuresZh,
+            features: {
+              deleteMany: {},
+              create: listToCreateRows(result.featuresZh),
+            },
           },
           create: {
             sourceHash,
             sourceText: (description || "").slice(0, 500),
             descriptionZh: result.descriptionZh,
-            featuresZh: result.featuresZh,
+            features: {
+              create: listToCreateRows(result.featuresZh),
+            },
           },
         })
       } catch {

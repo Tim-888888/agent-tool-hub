@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 import { requireAuth } from "@/lib/auth-helpers";
 import { checkRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { relationValues } from "@/lib/tool-relations";
 
 /**
  * GET /api/favorites — List current user's favorites
@@ -25,14 +26,19 @@ export async function GET(request: Request) {
           type: true,
           stars: true,
           avgRating: true,
-          tags: true,
+          tags: { orderBy: { sortOrder: "asc" } },
         },
       },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return successResponse(favorites.map((f) => f.tool));
+  return successResponse(
+    favorites.map((f) => ({
+      ...f.tool,
+      tags: relationValues(f.tool.tags),
+    })),
+  );
 }
 
 /**

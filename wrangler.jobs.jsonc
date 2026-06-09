@@ -1,0 +1,36 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "agent-tool-hub-jobs",
+  "main": "src/workers/jobs.ts",
+  "compatibility_date": "2026-05-21",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "triggers": {
+    "crons": [
+      "0 2 * * *",
+      "0 3 * * 1",
+      "0 4 * * *",
+      "0 5 * * *",
+      "0 6 * * 1"
+    ]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agent-tool-hub",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "workflows": [
+    {
+      "binding": "AGENT_TOOL_HUB_JOBS",
+      "name": "agent-tool-hub-jobs",
+      "class_name": "AgentToolHubWorkflow"
+    }
+  ],
+  "vars": {
+    "AGENT_TOOL_HUB_APP_URL": "https://agent-tool-hub.example.com"
+  }
+}
