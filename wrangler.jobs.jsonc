@@ -19,7 +19,7 @@
     {
       "binding": "DB",
       "database_name": "agent-tool-hub",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "740a2a8f-c9d3-49cf-837b-c4e8f921ea56",
       "migrations_dir": "migrations"
     }
   ],
@@ -31,6 +31,7 @@
     }
   ],
   "vars": {
-    "AGENT_TOOL_HUB_APP_URL": "https://agent-tool-hub.example.com"
+    "AGENT_TOOL_HUB_APP_URL": "https://agent-tool-hub.agent-tool-hub-tim888888.workers.dev",
+    "NEXT_PUBLIC_APP_URL": "https://agent-tool-hub.agent-tool-hub-tim888888.workers.dev"
   }
 }

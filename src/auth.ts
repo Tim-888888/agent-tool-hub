@@ -4,9 +4,10 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/db"
 
 const ADMIN_IDS = (process.env.ADMIN_GITHUB_IDS ?? "").split(",").filter(Boolean)
+const authPrisma = prisma as unknown as Parameters<typeof PrismaAdapter>[0]
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(authPrisma),
   providers: [GitHub],
   session: { strategy: "jwt" },
   callbacks: {

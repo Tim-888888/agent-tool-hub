@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { ToolStatus } from "@prisma/client";
+import { ToolStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { successResponse, errorResponse } from "@/lib/api-utils";
 

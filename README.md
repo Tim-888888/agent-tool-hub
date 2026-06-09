@@ -10,14 +10,13 @@ This project is configured for deployment on Cloudflare, not Vercel.
 - Auth.js with GitHub OAuth
 - Prisma with Cloudflare D1
 - Cloudflare Workers via OpenNext
-- Cloudflare R2 for OpenNext cache assets
 - Cloudflare Workflows and Wrangler for scheduled/background jobs
 
 ## Deployment
 
 Production deployment targets Cloudflare Workers using `@opennextjs/cloudflare`.
 
-The runtime database is Cloudflare D1, exposed to the Worker through the `DB` binding. Long-running and scheduled work is handled through the separate jobs Worker and Cloudflare Workflows configuration.
+The runtime database is Cloudflare D1, exposed to the Worker through the `DB` binding. Long-running and scheduled work is handled through the separate jobs Worker and Cloudflare Workflows configuration. OpenNext incremental cache is currently disabled so the app can deploy without requiring R2 billing setup; an R2-backed cache can be added later.
 
 Vercel deployment is no longer the target for this project.
 
@@ -73,7 +72,7 @@ The main Worker configuration lives in `wrangler.jsonc`.
 
 The jobs Worker configuration lives in `wrangler.jobs.jsonc`.
 
-Before deploying, replace placeholder Cloudflare resource IDs with real D1/R2/Workflow resources and set required secrets in Cloudflare:
+Before deploying, replace placeholder Cloudflare resource IDs with real D1/Workflow resources and set required secrets in Cloudflare:
 
 - `AUTH_SECRET`
 - `AUTH_GITHUB_ID`

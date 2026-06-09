@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { PrismaD1 } from "@prisma/adapter-d1";
-import { PrismaClient, type Prisma } from "@prisma/client";
+import { PrismaClient, type Prisma } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 let prismaClient = globalForPrisma.prisma;
@@ -27,7 +27,7 @@ function createPrismaClient(): PrismaClient {
     });
   }
 
-  return new PrismaClient({ log });
+  throw new Error("Cloudflare D1 binding DB is not available");
 }
 
 function getPrismaClient(): PrismaClient {

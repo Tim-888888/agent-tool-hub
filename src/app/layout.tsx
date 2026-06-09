@@ -1,19 +1,8 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Geist, Geist_Mono } from "next/font/google";
 import { I18nProvider } from "@/lib/i18n-context";
 import SessionProvider from "@/components/auth/SessionProvider";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: {
@@ -53,9 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col`}
-      >
+      <body className="min-h-full flex flex-col">
         <SessionProvider>
           <I18nProvider>
             {children}

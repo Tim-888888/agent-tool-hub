@@ -8,12 +8,12 @@ This project is now wired for Cloudflare Workers via OpenNext, Cloudflare D1, an
   - OpenNext output: `.open-next/worker.js`
   - Assets binding: `ASSETS`
   - D1 binding: `DB`
-  - R2 cache binding: `NEXT_INC_CACHE_R2_BUCKET`
+  - OpenNext incremental cache disabled with `incrementalCache: "dummy"` so R2 is not required for the first deployment.
 - Jobs Worker: `wrangler.jobs.jsonc`
   - Cron schedules create Workflow instances.
   - Workflows call the existing job API routes using `CRON_SECRET`.
 
-Before the first deploy, replace every `REPLACE_WITH_D1_DATABASE_ID` in the Wrangler configs with the real D1 database id and update `AGENT_TOOL_HUB_APP_URL`.
+Before the first deploy, replace every `REPLACE_WITH_D1_DATABASE_ID` in the Wrangler configs with the real D1 database id and update `AGENT_TOOL_HUB_APP_URL`. If R2 is enabled later, add a `NEXT_INC_CACHE_R2_BUCKET` binding and switch `open-next.config.ts` to the R2 incremental cache override.
 
 ## Commands
 

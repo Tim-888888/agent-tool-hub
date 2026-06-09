@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { ToolStatus, type Prisma } from "@prisma/client";
+import { ToolStatus, type Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import {
   parsePagination,

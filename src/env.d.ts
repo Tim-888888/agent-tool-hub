@@ -2,7 +2,6 @@
 
 interface CloudflareEnv {
   DB: D1Database;
-  NEXT_INC_CACHE_R2_BUCKET?: R2Bucket;
   AGENT_TOOL_HUB_JOBS?: Workflow;
   AGENT_TOOL_HUB_APP_URL?: string;
   CRON_SECRET?: string;

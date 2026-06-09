@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "preview": "opennextjs-cloudflare build && wrangler dev",
-    "deploy": "opennextjs-cloudflare build && wrangler deploy",
-    "upload": "opennextjs-cloudflare build && wrangler deploy --dry-run",
+    "preview": "opennextjs-cloudflare build && node scripts/copy-open-next-wasm.mjs && wrangler dev",
+    "deploy": "opennextjs-cloudflare build && node scripts/copy-open-next-wasm.mjs && wrangler deploy",
+    "upload": "opennextjs-cloudflare build && node scripts/copy-open-next-wasm.mjs && wrangler deploy --dry-run",
     "jobs:dev": "wrangler dev --config wrangler.jobs.jsonc",
     "jobs:deploy": "wrangler deploy --config wrangler.jobs.jsonc",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv src/env.d.ts",
@@ -27,14 +27,14 @@
     "@auth/prisma-adapter": "^2.11.1",
     "@formatjs/intl-localematcher": "^0.8.2",
     "@opennextjs/cloudflare": "^1.12.0",
-    "@prisma/adapter-d1": "^7.6.0",
-    "@prisma/client": "^7.6.0",
+    "@prisma/adapter-d1": "6.19.0",
+    "@prisma/client": "6.19.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",
     "negotiator": "^1.0.0",
     "next": "16.2.6",
     "next-auth": "^5.0.0-beta.30",
-    "prisma": "^7.6.0",
+    "prisma": "6.19.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.12.0",
@@ -42,10 +42,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260520.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@cloudflare/workers-types": "^4.20260520.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -58,6 +58,6 @@
     "ts-jest": "^29.4.9",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "wrangler": "^4.18.0"
+    "wrangler": "^4.98.0"
   }
 }
