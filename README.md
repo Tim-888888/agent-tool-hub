@@ -53,6 +53,25 @@ npm run db:migrate:local
 npm run db:migrate:remote
 ```
 
+Export the current Vercel/Postgres data into D1-compatible SQL, then import it:
+
+```bash
+POSTGRES_DATABASE_URL="postgres://..." npm run db:export:postgres
+npm run db:import:local
+npm run db:import:remote
+```
+
+If the Vercel/Postgres connection string is not available, export public directory data from the live Vercel site API:
+
+```bash
+npm run db:export:vercel-public
+npm run db:import:public:local
+npm run db:import:public:remote
+```
+
+This fallback migrates public tools, categories, platforms, tags, transports, features, screenshots, and relationships. It does not include users, OAuth accounts, sessions, favorites, reviews, or other private tables.
+For large remote D1 imports, generate smaller SQL chunks with `npm run db:export:vercel-public -- --chunk-size 5000`.
+
 Run or deploy the jobs Worker:
 
 ```bash
@@ -85,5 +104,7 @@ Before deploying, replace placeholder Cloudflare resource IDs with real D1/Workf
 ## Notes
 
 - D1 migrations live in `migrations/`.
+- `scripts/export-postgres-to-d1.mjs` preserves existing Vercel/Postgres data by transforming PostgreSQL scalar arrays into D1 relation tables before import.
+- `scripts/export-vercel-public-api-to-d1.mjs` is a public-data fallback for cases where the direct Postgres URL is unavailable.
 - Cloudflare migration details are documented in `docs/cloudflare-migration.md`.
 - On Windows, OpenNext may warn about runtime compatibility. Use WSL/Linux or Cloudflare staging for final runtime validation.

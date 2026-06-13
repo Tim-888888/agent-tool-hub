@@ -50,11 +50,10 @@ export const TOOLS: Tool[] = [
     installGuide: 'npm install @anthropic/brave-search-mcp',
     categories: [CATEGORIES[0]],
     platforms: [PLATFORMS[0], PLATFORMS[1], PLATFORMS[2]],
-    isFeatured: true,
   },
   {
     id: '2',
-    name: 'Filesystem MCP Server',
+    name: 'Filesystem MCP',
     slug: 'filesystem-mcp',
     description: 'Secure file system operations for AI agents',
     type: 'MCP_SERVER',
@@ -75,7 +74,6 @@ export const TOOLS: Tool[] = [
     tags: ['files', 'filesystem', 'io'],
     categories: [CATEGORIES[1]],
     platforms: [PLATFORMS[0], PLATFORMS[1]],
-    isFeatured: true,
   },
   {
     id: '3',
@@ -310,74 +308,3 @@ export const TOOLS: Tool[] = [
     platforms: [PLATFORMS[0], PLATFORMS[1]],
   },
 ];
-
-interface ToolFilters {
-  type?: 'mcp' | 'skill' | 'rule';
-  platform?: string;
-  category?: string;
-  query?: string;
-  sort?: 'stars' | 'rating' | 'name';
-}
-
-const TYPE_MAP: Record<string, Tool['type']> = {
-  mcp: 'MCP_SERVER',
-  skill: 'SKILL',
-  rule: 'RULE',
-};
-
-export function getTools(filters: ToolFilters = {}): Tool[] {
-  let tools = [...TOOLS];
-
-  if (filters.type) {
-    tools = tools.filter((tool) => tool.type === TYPE_MAP[filters.type!]);
-  }
-
-  if (filters.platform) {
-    tools = tools.filter((tool) => tool.platforms.some((platform) => platform.slug === filters.platform));
-  }
-
-  if (filters.category) {
-    tools = tools.filter((tool) => tool.categories.some((category) => category.slug === filters.category));
-  }
-
-  if (filters.query) {
-    const q = filters.query.toLowerCase();
-    tools = tools.filter((tool) =>
-      tool.name.toLowerCase().includes(q) ||
-      tool.description.toLowerCase().includes(q) ||
-      tool.tags.some((tag) => tag.toLowerCase().includes(q)),
-    );
-  }
-
-  switch (filters.sort) {
-    case 'stars':
-      tools.sort((a, b) => b.stars - a.stars);
-      break;
-    case 'rating':
-      tools.sort((a, b) => b.avgRating - a.avgRating);
-      break;
-    case 'name':
-      tools.sort((a, b) => a.name.localeCompare(b.name));
-      break;
-  }
-
-  return tools;
-}
-
-export function getToolBySlug(slug: string): Tool | undefined {
-  return TOOLS.find((tool) => tool.slug === slug);
-}
-
-export function getFeaturedTools(): Tool[] {
-  return TOOLS.filter((tool) => tool.isFeatured);
-}
-
-export function getTrendingTools(): Tool[] {
-  return [...TOOLS]
-    .sort((a, b) => {
-      const bDate = new Date(b.lastCommitAt ?? b.updatedAt).getTime();
-      const aDate = new Date(a.lastCommitAt ?? a.updatedAt).getTime();
-      return bDate - aDate;
-    })
-    .slice(0, 6);
-}

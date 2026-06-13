@@ -57,13 +57,52 @@ Map old fields into the new tables:
 Recommended production flow:
 
 1. Freeze writes on the Vercel/Postgres deployment.
-2. Export each table from Postgres as JSON or CSV.
-3. Transform the scalar array columns into the relation tables above.
+2. Copy the source Postgres connection string from the current Vercel deployment into `POSTGRES_DATABASE_URL`. The Vercel project dashboard URL is not enough; the exporter needs the database URL used by the existing production app.
+3. Generate D1-compatible import SQL:
+
+   ```bash
+   POSTGRES_DATABASE_URL="postgres://..." npm run db:export:postgres
+   ```
+
+   This writes:
+
+   - `exports/postgres-to-d1.sql`
+   - `exports/postgres-to-d1-counts.json`
+
 4. Apply `migrations/0001_initial_d1.sql` to staging D1.
-5. Import transformed rows into staging D1.
-6. Compare counts for every table and sample key relations for tools, users, OAuth accounts, sessions, submissions, comments, favorites, collections, notifications, digest sends, and translation cache.
+5. Import transformed rows into staging D1:
+
+   ```bash
+   npm run db:import:local
+   npm run db:import:remote
+   ```
+
+   Use local import first for validation. Only run the remote import after checking the generated SQL and staging target.
+   Wrangler manages remote D1 import execution, so generated SQL does not include explicit `BEGIN`/`COMMIT` statements.
+
+6. Compare `exports/postgres-to-d1-counts.json` with D1 table counts and sample key relations for tools, users, OAuth accounts, sessions, submissions, reviews, favorites, collections, notifications, digest sends, and translation cache.
 7. Deploy staging Workers and run every Workflow manually once.
 8. Cut DNS/traffic after OAuth callback URLs and email/webhook secrets are confirmed.
+
+The exporter does not delete D1 rows by default. If importing into a deliberately disposable staging database that already contains data, pass `--with-delete` to `scripts/export-postgres-to-d1.mjs` to prepend deletes in foreign-key-safe order.
+
+### Public API fallback
+
+If the direct Vercel/Postgres connection string is unavailable, use the public Vercel deployment API to seed the public directory data:
+
+```bash
+npm run db:export:vercel-public
+npm run db:import:public:local
+npm run db:import:public:remote
+```
+
+This writes `exports/vercel-public-to-d1.sql` and `exports/vercel-public-to-d1-counts.json`. It reads from `https://agent-tool-hub.vercel.app` by default and migrates public tools, categories, platforms, tags, transports, features, screenshots, and relationships. It does not include private auth/session/user/favorite/review data, so a full production cutover still needs the source Postgres connection string.
+
+For large remote D1 imports, generate smaller files with:
+
+```bash
+npm run db:export:vercel-public -- --chunk-size 5000
+```
 
 ## Follow-up Performance Work
 

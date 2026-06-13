@@ -42,7 +42,6 @@ export interface Tool {
   installGuide?: string | Record<string, unknown>;
   categories: Category[];
   platforms: Platform[];
-  isFeatured?: boolean;
   topTags?: { tagSlug: string; count: number }[];
 }
 

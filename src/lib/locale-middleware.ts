@@ -51,7 +51,7 @@ function getLocale(request: NextRequest): string {
   }
 }
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
@@ -80,5 +80,4 @@ export function proxy(request: NextRequest) {
   return response;
 }
 
-export const middleware = proxy;
-
+export const proxy = middleware;

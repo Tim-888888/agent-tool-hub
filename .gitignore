@@ -46,3 +46,6 @@ next-env.d.ts
 
 # generated prisma client
 /src/generated/prisma/
+
+# local data exports may contain production user/session data
+/exports/

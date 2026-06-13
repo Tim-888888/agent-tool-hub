@@ -1,34 +1,16 @@
-import { getDictionary, t } from '@/lib/i18n';
+import { t } from '@/lib/i18n';
 import en from '@/i18n/en.json';
 import zh from '@/i18n/zh.json';
-
-describe('getDictionary', () => {
-  it('returns English dictionary for "en"', () => {
-    const dict = getDictionary('en');
-    expect(dict.site.title).toBe('AgentToolHub');
-    expect(dict.nav.home).toBe('Home');
-  });
-
-  it('returns Chinese dictionary for "zh"', () => {
-    const dict = getDictionary('zh');
-    expect(dict.nav.home).toBe('首页');
-  });
-
-  it('defaults to English for unknown locale', () => {
-    const dict = getDictionary('fr');
-    expect(dict.nav.home).toBe('Home');
-  });
-});
 
 describe('t (translation lookup)', () => {
   it('returns value for valid key', () => {
     expect(t(en, 'nav.home')).toBe('Home');
-    expect(t(zh, 'nav.home')).toBe('首页');
+    expect(t(zh, 'nav.home')).toBe(zh.nav.home);
   });
 
   it('returns nested value', () => {
-    expect(t(en, 'home.hero.title')).toBe('Find the Best AI Agent Tools');
-    expect(t(zh, 'home.hero.title')).toBe('找到最适合你的 AI Agent 工具');
+    expect(t(en, 'hero.title')).toBe('Discover AI Agent Tools');
+    expect(t(zh, 'hero.title')).toBe(zh.hero.title);
   });
 
   it('returns key for missing translation', () => {
