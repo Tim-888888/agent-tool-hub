@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { match } from "@formatjs/intl-localematcher";
 
 const locales = ["en", "zh"] as const;
 const defaultLocale = "en";
@@ -31,15 +32,7 @@ function getLocale(request: NextRequest): string {
 
   try {
     const canonicalLocales = Intl.getCanonicalLocales(headerLocales);
-    for (const headerLocale of canonicalLocales) {
-      const exact = locales.find((locale) => locale === headerLocale.toLowerCase());
-      if (exact) return exact;
-      const prefix = headerLocale.split("-")[0].toLowerCase();
-      if (locales.includes(prefix as (typeof locales)[number])) {
-        return prefix;
-      }
-    }
-    return defaultLocale;
+    return match(canonicalLocales, locales as unknown as string[], defaultLocale);
   } catch {
     for (const headerLocale of headerLocales) {
       const prefix = headerLocale.split("-")[0].toLowerCase();

@@ -61,13 +61,14 @@ Recommended production flow:
 3. Generate D1-compatible import SQL:
 
    ```bash
-   POSTGRES_DATABASE_URL="postgres://..." npm run db:export:postgres
+   POSTGRES_DATABASE_URL="postgres://..." npm run db:export:postgres -- --with-delete --chunk-size 1000
    ```
 
    This writes:
 
    - `exports/postgres-to-d1.sql`
    - `exports/postgres-to-d1-counts.json`
+   - optional chunk files such as `exports/postgres-to-d1.001.sql`
 
 4. Apply `migrations/0001_initial_d1.sql` to staging D1.
 5. Import transformed rows into staging D1:
@@ -77,14 +78,14 @@ Recommended production flow:
    npm run db:import:remote
    ```
 
-   Use local import first for validation. Only run the remote import after checking the generated SQL and staging target.
+   Use local import first for validation. Only run the remote import after checking the generated SQL and staging target. For production-sized imports, apply the chunk files in order instead of the single large SQL file.
    Wrangler manages remote D1 import execution, so generated SQL does not include explicit `BEGIN`/`COMMIT` statements.
 
 6. Compare `exports/postgres-to-d1-counts.json` with D1 table counts and sample key relations for tools, users, OAuth accounts, sessions, submissions, reviews, favorites, collections, notifications, digest sends, and translation cache.
 7. Deploy staging Workers and run every Workflow manually once.
 8. Cut DNS/traffic after OAuth callback URLs and email/webhook secrets are confirmed.
 
-The exporter does not delete D1 rows by default. If importing into a deliberately disposable staging database that already contains data, pass `--with-delete` to `scripts/export-postgres-to-d1.mjs` to prepend deletes in foreign-key-safe order.
+The exporter does not delete D1 rows by default. If importing into a deliberately disposable staging database that already contains data, pass `--with-delete` to `scripts/export-postgres-to-d1.mjs` to prepend deletes in foreign-key-safe order. The generated inserts are retry-safe so a failed chunk can be run again before continuing.
 
 ### Public API fallback
 

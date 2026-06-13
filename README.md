@@ -56,10 +56,12 @@ npm run db:migrate:remote
 Export the current Vercel/Postgres data into D1-compatible SQL, then import it:
 
 ```bash
-POSTGRES_DATABASE_URL="postgres://..." npm run db:export:postgres
+POSTGRES_DATABASE_URL="postgres://..." npm run db:export:postgres -- --with-delete --chunk-size 1000
 npm run db:import:local
 npm run db:import:remote
 ```
+
+The full export writes `exports/postgres-to-d1.sql`, `exports/postgres-to-d1-counts.json`, and optional chunk files such as `exports/postgres-to-d1.001.sql`. For production-sized remote D1 imports, validate locally first, then import the chunk files in order with Wrangler. The generated SQL uses retry-safe inserts because Cloudflare API uploads can occasionally fail mid-run.
 
 If the Vercel/Postgres connection string is not available, export public directory data from the live Vercel site API:
 

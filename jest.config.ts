@@ -11,6 +11,7 @@ const config: Config = {
     '^next-auth/providers/github$': '<rootDir>/__tests__/mocks/next-auth-github.ts',
     '^@auth/prisma-adapter$': '<rootDir>/__tests__/mocks/prisma-adapter.ts',
     '^@prisma/adapter-d1$': '<rootDir>/__tests__/mocks/prisma-adapter-d1.ts',
+    '^@formatjs/intl-localematcher$': '<rootDir>/__tests__/mocks/intl-localematcher.ts',
   },
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.next/', '<rootDir>/.open-next/', '<rootDir>/__tests__/mocks/'],
   modulePathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/.open-next/'],
